@@ -11,19 +11,12 @@ class Light:
     def get_color(self, poly):
         a, b, c = poly
         center = (a + b + c) / 3
-        a, b = b - a, c - a
-        cross = set_ort(np.cross(a, b))
+        cross = set_ort(np.cross(b - a, c - a))
         vec = set_ort(center - self.position)
 
         ans = np.dot(cross, vec)
 
-        if ans < 0 or get_angle(cross, vec) >= np.pi / 1.7:
-            return 0
-
-        # if get_angle(vec, self.direction) > self.FOV:
-        #     return (ans / get_angle(vec, self.direction) * self.FOV) ** self.power
-
         if get_angle(vec, self.direction) > self.FOV / 2:
             ans = (ans / get_angle(vec, self.direction) * self.FOV / 2) ** self.power
 
-        return ans * ((self.power * 15) / get_len(center - self.position))
+        return max(0, ans * ((self.power * 15) / get_len(center - self.position)))
