@@ -1,19 +1,16 @@
-from scipy.linalg import signm
-
 from .camera import Camera
 from .utils import *
 
 
 class Player:
-    def __init__(self, screen, position=(0, 0, 0), direction=(0, 1, 0), FOV=90):
+    def __init__(self, position=(0, 0, 0), direction=(0, 1, 0), FOV=90):
         if all([i == 0 for i in direction]):
             direction = (0, 1, 0)
-        self.screen = np.array([screen.width, screen.height])
         self.camera = Camera(position, direction, FOV)
         self.position = np.array(position, dtype=np.float32)
         self.direction = set_ort(np.array(direction, dtype=np.float32))
         self.FOV = FOV
-        self.last = np.array([0, 0])
+        self.last = 0
         self.warping = False
 
     def go(self, event):
@@ -33,10 +30,11 @@ class Player:
         self.camera.move_to(self.position, self.direction, self.FOV)
 
     def turn(self, event):
-        print(event.state)
+        # print(event.state)
+        # print(self.screen)
         cursor = np.array([event.x, event.y]) - self.screen / 2
         cursor[1] *= -1
-        if abs(cursor[0]) > self.screen[0] / 2 or abs(cursor[1]) > self.screen[1] / 2 or event.state == 0:
+        if event.state == 0:
             self.last = cursor
 
             return
@@ -45,9 +43,11 @@ class Player:
         self.last = cursor
         a = np.cross(self.direction, np.array([0, 0, 1]))
         b = np.cross(a, self.direction)
+        # print(self.direction)
+        # print(a, b)
         a /= get_len(a)
         b /= get_len(b)
-        turning = (a * delta[0] + b * delta[1]) / (700 / sum(abs(delta / 10)))
+        turning = (a * delta[0] + b * delta[1]) / (700 / (sum(abs(delta / 10)) + 0.0001))
         self.direction += turning
 
         self.direction /= np.sqrt((self.direction ** 2).sum())

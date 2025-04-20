@@ -1,3 +1,5 @@
+import numpy
+
 from .utils import *
 
 
@@ -21,7 +23,7 @@ class Camera:
 
         vec = center - self.position
         # print(vec, self.direction)
-        if angle_between_vectors(vec, self.direction) > self.FOV / 2:
+        if get_angle(vec, self.direction) > self.FOV / 2:
             return False
         cross = set_ort(np.cross(b - a, c - a))
 
@@ -35,7 +37,12 @@ class Camera:
         M = np.array([a, b, self.direction]).T
         P = self.view_dot.T
 
-        return (np.linalg.inv(M) @ (dot.T - P.T))[:2] * (2500 / self.focus)
+        try:
+            ans = np.linalg.inv(M)
+        except numpy.linalg.LinAlgError:
+            ans = np.linalg.inv(M + 1e-5)
+
+        return (ans @ (dot.T - P.T))[:2] * (2500 / self.focus)
 
     def get_camera_u(self, objc: np.array, screen: np.array):
         obj = objc - self.position
@@ -59,32 +66,3 @@ class Camera:
     def to_canvas(self, poly, screen):
         return [self.get_camera_u(poly[i], screen) for i in range(3)]
 
-    # def go(self, event):
-    #     back = False
-    #     if event.char == 's':
-    #         back = True
-    #     self.position += self.direction * 0.8 * [1, -1][back]
-    #     self.view_dot = self.position + self.direction * (self.focus / 2 * np.tan(self.FOV / 2))
-    #
-    # def go_side(self, event):
-    #     a = set_ort(np.cross(self.direction, np.array([0, 0, 1])))
-    #
-    #     self.position += a * 0.8 * [1, -1][event.char == 'a']
-    #     self.view_dot = self.position + self.direction * (self.focus / 2 * np.tan(self.FOV / 2))
-    #
-    # def go_up(self, event):
-    #     self.position += np.array([0, 0, 1]) * 0.8 * [1, -1][event.char != ' ']
-    #     self.view_dot = self.position + self.direction * (self.focus / 2 * np.tan(self.FOV / 2))
-    #
-    # def turn(self, event):
-    #     a = np.cross(self.direction, np.array([0, 0, 1]))
-    #     b = np.cross(a, self.direction)
-    #     a /= get_len(a) * 10
-    #     b /= get_len(b) * 10
-    #
-    #     turning = {"Left": -a, "Right": a, "Up": b, "Down": -b}[event.keysym]
-    #
-    #     self.direction += turning/10
-    #
-    #     self.direction /= np.sqrt(sum(self.direction ** 2))
-    #     self.view_dot = self.position + self.direction * (self.focus / 2 * np.tan(self.FOV / 2))

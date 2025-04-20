@@ -1,4 +1,6 @@
 from .utils import *
+
+
 class Object:
     def to_system(self, angle):
         return to_new_system(self.Mx, self.My, self.Mz, self.position, angle)
@@ -13,6 +15,9 @@ class Object:
 
     def to_rotate(self, rotate):
         self.Mx, self.My, self.Mz = create_matrix(rotate)
+
+    def get_attributes(self):
+        return self.attributes
 
     def to_draw(self, check):
         polys = []

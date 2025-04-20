@@ -7,10 +7,8 @@ class Screen:
 
     def __init__(self, window: tk.Tk, width: int, height: int):
         self.root = window
-        self.width = width
-        self.height = height
         self.screen = np.array([width, height])
-        self.canvas = tk.Canvas(self.root, width=self.width, heigh=self.height, bg='#adfff6', cursor='none')
+        self.canvas = tk.Canvas(self.root, width=self.screen[0], heigh=self.screen[1], bg='#adfff6', cursor='none')
         self.canvas.pack()
 
     def draw(self, poly, base_color, intensity):
