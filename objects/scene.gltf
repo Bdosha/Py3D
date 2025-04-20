@@ -1,0 +1,341 @@
+{
+  "accessors": [
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 499,
+      "max": [
+        0.957427978515625,
+        2.7975192070007324,
+        0.9574236869812012
+      ],
+      "min": [
+        -0.957427978515625,
+        -2.7975192070007324,
+        -0.9574281573295593
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 5988,
+      "componentType": 5126,
+      "count": 499,
+      "max": [
+        0.9671463966369629,
+        1.0,
+        0.9671704769134521
+      ],
+      "min": [
+        -0.9671695828437805,
+        -1.0,
+        -0.9671701192855835
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5126,
+      "count": 499,
+      "max": [
+        1.0,
+        0.999998152256012,
+        0.3471454679965973,
+        1.0
+      ],
+      "min": [
+        -0.3471483290195465,
+        -0.15966124832630157,
+        -1.0,
+        -1.0
+      ],
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 499,
+      "max": [
+        0.47234365344047546,
+        0.4687802791595459
+      ],
+      "min": [
+        0.1320037841796875,
+        0.3060574531555176
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 3992,
+      "componentType": 5126,
+      "count": 499,
+      "max": [
+        0.47234365344047546,
+        0.4687802791595459
+      ],
+      "min": [
+        0.1320037841796875,
+        0.3060574531555176
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 7984,
+      "componentType": 5126,
+      "count": 499,
+      "max": [
+        0.47234365344047546,
+        0.4687802791595459
+      ],
+      "min": [
+        0.1320037841796875,
+        0.3060574531555176
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 11976,
+      "componentType": 5126,
+      "count": 499,
+      "max": [
+        0.47234365344047546,
+        0.4687802791595459
+      ],
+      "min": [
+        0.1320037841796875,
+        0.3060574531555176
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 15968,
+      "componentType": 5126,
+      "count": 499,
+      "max": [
+        0.47234365344047546,
+        0.4687802791595459
+      ],
+      "min": [
+        0.1320037841796875,
+        0.3060574531555176
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "componentType": 5125,
+      "count": 768,
+      "type": "SCALAR"
+    }
+  ],
+  "asset": {
+    "extras": {
+      "author": "nyu_grad_alley_2020 (https://sketchfab.com/nyu_grad_alley_2020)",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "source": "https://sketchfab.com/3d-models/foodtent-soda-8a1fd19bb9e54550a4345cab9941e6a7",
+      "title": "FoodTent Soda"
+    },
+    "generator": "Sketchfab-12.68.0",
+    "version": "2.0"
+  },
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 3072,
+      "name": "floatBufferViews",
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteLength": 19960,
+      "byteOffset": 3072,
+      "byteStride": 8,
+      "name": "floatBufferViews",
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 11976,
+      "byteOffset": 23032,
+      "byteStride": 12,
+      "name": "floatBufferViews",
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 7984,
+      "byteOffset": 35008,
+      "byteStride": 16,
+      "name": "floatBufferViews",
+      "target": 34962
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 42992,
+      "uri": "scene.bin"
+    }
+  ],
+  "images": [
+    {
+      "uri": "textures/PolygonCity_Mat_01_A_baseColor.jpeg"
+    },
+    {
+      "uri": "textures/PolygonCity_Mat_01_A_metallicRoughness.png"
+    },
+    {
+      "uri": "textures/PolygonCity_Mat_01_A_emissive.jpeg"
+    },
+    {
+      "uri": "textures/PolygonCity_Mat_01_A_normal.png"
+    }
+  ],
+  "materials": [
+    {
+      "emissiveTexture": {
+        "index": 2
+      },
+      "name": "PolygonCity_Mat_01_A",
+      "normalTexture": {
+        "index": 3
+      },
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0
+        },
+        "metallicFactor": 0.0,
+        "metallicRoughnessTexture": {
+          "index": 1
+        },
+        "roughnessFactor": 0.5
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Object_0",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 1,
+            "POSITION": 0,
+            "TANGENT": 2,
+            "TEXCOORD_0": 3,
+            "TEXCOORD_1": 4,
+            "TEXCOORD_2": 5,
+            "TEXCOORD_3": 6,
+            "TEXCOORD_4": 7
+          },
+          "indices": 8,
+          "material": 0,
+          "mode": 4
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "children": [
+        1
+      ],
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        2.220446049250313e-16,
+        -1.0,
+        0.0,
+        0.0,
+        1.0,
+        2.220446049250313e-16,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "name": "Sketchfab_model"
+    },
+    {
+      "children": [
+        2
+      ],
+      "name": "root"
+    },
+    {
+      "children": [
+        3
+      ],
+      "matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        2.220446049250313e-16,
+        1.0,
+        0.0,
+        0.0,
+        -1.0,
+        2.220446049250313e-16,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "name": "GLTF_SceneRootNode"
+    },
+    {
+      "children": [
+        4
+      ],
+      "name": "SM_Prop_LargeSign_Soda_01_0"
+    },
+    {
+      "mesh": 0,
+      "name": "Object_4"
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9729,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Sketchfab_Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    },
+    {
+      "sampler": 0,
+      "source": 1
+    },
+    {
+      "sampler": 0,
+      "source": 2
+    },
+    {
+      "sampler": 0,
+      "source": 3
+    }
+  ]
+}
