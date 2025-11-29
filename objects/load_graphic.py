@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-import core_engine.utils as utils
+import core.utils as utils
 
 
 def get_color(poly, h):

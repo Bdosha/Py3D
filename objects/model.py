@@ -1,7 +1,7 @@
 import trimesh
 
-from core_engine.object import Object
-from core_engine.utils import *
+from core.object import Object
+from core.utils import *
 
 
 def load_polygons_from_gltf(file_path):
