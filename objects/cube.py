@@ -1,5 +1,5 @@
-from core_engine.object import Object
-from core_engine.utils import *
+from core.object import Object
+from core.utils import *
 
 
 class Cube(Object):
