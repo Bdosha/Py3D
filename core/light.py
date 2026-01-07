@@ -1,22 +1,96 @@
-from .utils import *
+"""
+Источники света для 3D движка Py3D.
+
+Реализует точечные направленные источники света с затуханием
+по расстоянию и ограниченным углом освещения.
+"""
+
+import numpy as np
+
+from .types import Vector3, Triangle
+from .constants import (
+    DEFAULT_POSITION,
+    DEFAULT_DIRECTION,
+    DEFAULT_FOV,
+    MIN_LIGHT_POWER,
+    LIGHT_POWER_DIVISOR,
+    LIGHT_FALLOFF_MULTIPLIER
+)
+from .utils import to_radians, set_ort, get_angle, get_len
 
 
 class Light:
-    def __init__(self, position: tuple[float, float, float], direction: tuple[float, float, float], FOV=90, power=1):
-        self.position = np.array(position, dtype=np.float32)
-        self.direction = set_ort(np.array(direction, dtype=np.float32))
-        self.FOV = to_radians(FOV)
-        self.power = max(8, power) / 10
-
-    def get_color(self, poly):
+    """
+    Направленный точечный источник света.
+    
+    Освещает объекты в пределах конуса с заданным углом (FOV).
+    Интенсивность затухает с расстоянием.
+    
+    Attributes:
+        position: Позиция источника света.
+        direction: Направление света (нормализованное).
+        FOV: Угол конуса света в радианах.
+        power: Мощность света (влияет на яркость и затухание).
+    """
+    
+    def __init__(
+        self,
+        position: tuple[float, float, float] = DEFAULT_POSITION,
+        direction: tuple[float, float, float] = DEFAULT_DIRECTION,
+        fov: float = DEFAULT_FOV,
+        power: float = 1.0
+    ) -> None:
+        """
+        Создаёт источник света.
+        
+        Args:
+            position: Позиция источника в мировых координатах.
+            direction: Направление света (будет нормализовано).
+            fov: Угол конуса света в градусах.
+            power: Мощность света (минимум MIN_LIGHT_POWER).
+        """
+        self.position: Vector3 = np.array(position, dtype=np.float32)
+        self.direction: Vector3 = set_ort(np.array(direction, dtype=np.float32))
+        self.FOV: float = to_radians(fov)
+        # Нормализуем мощность с минимальным порогом
+        self.power: float = max(MIN_LIGHT_POWER, power) / LIGHT_POWER_DIVISOR
+    
+    def get_intensity(self, poly: Triangle) -> float:
+        """
+        Вычисляет интенсивность освещения для полигона.
+        
+        Учитывает:
+        - Угол между нормалью полигона и направлением к свету
+        - Расстояние от источника до полигона
+        - Угол относительно направления источника (FOV)
+        
+        Args:
+            poly: Треугольник (массив 3x3 вершин).
+            
+        Returns:
+            Интенсивность освещения в диапазоне [0, 1].
+        """
         a, b, c = poly
         center = (a + b + c) / 3
-        cross = set_ort(np.cross(b - a, c - a))
-        vec = set_ort(center - self.position)
-
-        ans = np.dot(cross, vec)
-
-        if get_angle(vec, self.direction) > self.FOV / 2:
-            ans = (ans / get_angle(vec, self.direction) * self.FOV / 2) ** self.power
-
-        return max(0, ans * ((self.power * 15) / get_len(center - self.position)))
+        
+        # Нормаль полигона
+        normal = set_ort(np.cross(b - a, c - a))
+        
+        # Направление от источника к центру полигона
+        to_poly = set_ort(center - self.position)
+        
+        # Базовая интенсивность: косинус угла между нормалью и направлением к свету
+        intensity = np.dot(normal, to_poly)
+        
+        # Проверяем, находится ли полигон в конусе света
+        angle_to_poly = get_angle(to_poly, self.direction)
+        if angle_to_poly > self.FOV / 2:
+            # Вне основного конуса - затухание по углу
+            intensity = (intensity / angle_to_poly * self.FOV / 2) ** self.power
+        
+        # Затухание по расстоянию
+        distance = get_len(center - self.position)
+        falloff = (self.power * LIGHT_FALLOFF_MULTIPLIER) / distance
+        
+        # Итоговая интенсивность (не меньше 0)
+        return max(0.0, intensity * falloff)

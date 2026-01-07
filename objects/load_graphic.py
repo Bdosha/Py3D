@@ -1,148 +1,284 @@
-import matplotlib.pyplot as plt
+"""
+Генераторы полигонов для графиков и параметрических поверхностей.
+
+Содержит функции для создания сеток треугольников из:
+- Функций z = f(x, y)
+- Параметрических поверхностей (u, v) -> (x, y, z)
+"""
+
 import numpy as np
+from numpy.typing import NDArray
 
-import core.utils as utils
-
-
-def get_color(poly, h):
-    return (utils.mean(poly[:, 2]) + h) / 2 / h * 255
+from core.utils import mean
+from core.types import Color, Polygon
 
 
-def get_colors(poly, h):
-    return get_color(poly, h), 255 - get_color(poly, h), get_color(poly, h)
+def get_color(poly: NDArray, max_height: float) -> float:
+    """
+    Вычисляет компоненту цвета на основе средней высоты полигона.
+    
+    Args:
+        poly: Треугольник (массив 3x3).
+        max_height: Максимальная высота для нормализации.
+        
+    Returns:
+        Значение цвета 0-255.
+    """
+    if max_height == 0:
+        return 127  # Средний цвет для плоских поверхностей
+    return (mean(poly[:, 2]) + max_height) / (2 * max_height) * 255
 
 
-def spiral(A, B, U, V):
-    X = (A + B * np.cos(V)) * np.cos(U)
-    Y = (A + B * np.sin(V)) * np.sin(U)
-    Z = B * np.sin(V) + A * U
+def get_colors(poly: NDArray, max_height: float) -> Color:
+    """
+    Вычисляет RGB цвет полигона на основе высоты.
+    
+    Создаёт градиент от пурпурного (низ) к зелёному (верх).
+    
+    Args:
+        poly: Треугольник (массив 3x3).
+        max_height: Максимальная высота для нормализации.
+        
+    Returns:
+        RGB кортеж цвета.
+    """
+    c = get_color(poly, max_height)
+    return (int(c), int(255 - c), int(c))
+
+
+# =============================================================================
+# Параметрические функции поверхностей
+# =============================================================================
+
+def spiral(alpha: float, beta: float, U: NDArray, V: NDArray) -> tuple[NDArray, NDArray, NDArray]:
+    """
+    Спиральная поверхность.
+    
+    Args:
+        alpha, beta: Параметры формы.
+        U, V: Сетки параметров.
+        
+    Returns:
+        Координаты X, Y, Z поверхности.
+    """
+    X = (alpha + beta * np.cos(V)) * np.cos(U)
+    Y = (alpha + beta * np.sin(V)) * np.sin(U)
+    Z = beta * np.sin(V) + alpha * U
     return X, Y, Z
 
 
-def meb(A, B, U, V):
-    X = (A + V * np.cos(U / 2)) * np.cos(U)
-    Y = (A + V * np.cos(U / 2)) * np.sin(U)
-    Z = B * np.sin(U / 2) * V
+def mobius(alpha: float, beta: float, U: NDArray, V: NDArray) -> tuple[NDArray, NDArray, NDArray]:
+    """
+    Лента Мёбиуса.
+    
+    Args:
+        alpha, beta: Параметры формы.
+        U, V: Сетки параметров.
+        
+    Returns:
+        Координаты X, Y, Z поверхности.
+    """
+    X = (alpha + V * np.cos(U / 2)) * np.cos(U)
+    Y = (alpha + V * np.cos(U / 2)) * np.sin(U)
+    Z = beta * np.sin(U / 2) * V
     return X, Y, Z
 
 
-def tor(A, B, U, V):
-    X = (A + B * np.cos(V)) * np.cos(U)
-    Y = (A + B * np.cos(V)) * np.sin(U)
-    Z = B * np.sin(V)
+def torus(alpha: float, beta: float, U: NDArray, V: NDArray) -> tuple[NDArray, NDArray, NDArray]:
+    """
+    Тор (бублик).
+    
+    Args:
+        alpha: Радиус тора (расстояние от центра до центра трубки).
+        beta: Радиус трубки.
+        U, V: Сетки параметров.
+        
+    Returns:
+        Координаты X, Y, Z поверхности.
+    """
+    X = (alpha + beta * np.cos(V)) * np.cos(U)
+    Y = (alpha + beta * np.cos(V)) * np.sin(U)
+    Z = beta * np.sin(V)
     return X, Y, Z
 
 
-def screw(A, B, U, V):
-    X = A * U * np.cos(U)
-    Y = B * U * np.sin(U)
+def screw(alpha: float, beta: float, U: NDArray, V: NDArray) -> tuple[NDArray, NDArray, NDArray]:
+    """
+    Винтовая поверхность (геликоид).
+    
+    Args:
+        alpha, beta: Параметры формы.
+        U, V: Сетки параметров.
+        
+    Returns:
+        Координаты X, Y, Z поверхности.
+    """
+    X = alpha * U * np.cos(U)
+    Y = beta * U * np.sin(U)
     Z = V
     return X, Y, Z
 
 
-def sea(A, B, U, V):
-    X = A * np.exp(B * V) * np.cos(V) * (1 + np.cos(U))
-    Y = A * np.exp(B * V) * np.cos(V) * (1 + np.cos(U))
-    Z = A * np.exp(B * V) * np.sin(U)
-
-
+def sea_shell(alpha: float, beta: float, U: NDArray, V: NDArray) -> tuple[NDArray, NDArray, NDArray]:
+    """
+    Морская раковина (экспоненциальная спираль).
+    
+    Args:
+        alpha, beta: Параметры формы.
+        U, V: Сетки параметров.
+        
+    Returns:
+        Координаты X, Y, Z поверхности.
+    """
+    exp_term = alpha * np.exp(beta * V)
+    X = exp_term * np.cos(V) * (1 + np.cos(U))
+    Y = exp_term * np.cos(V) * (1 + np.cos(U))
+    Z = exp_term * np.sin(U)
     return X, Y, Z
 
 
-def get_info_lab(num):
-    info = ([-2 * np.pi, np.pi * 2, -np.pi, np.pi, spiral, 1.5],
-            [0, np.pi * 2, -0.5, 0.5, meb, 4],
-            [0, np.pi * 2, 0, np.pi * 2, tor, 3],
-            [0, np.pi * 4, -2, 2, screw, 0.7],
-            [0, np.pi * 2, 0, np.pi * 6, sea, 1.5 * 1e-8])
-    return info[num]
+# =============================================================================
+# Конфигурация параметрических поверхностей
+# =============================================================================
+
+# Формат: (U_min, U_max, V_min, V_max, function, scale)
+SURFACE_CONFIG = {
+    0: (-2 * np.pi, 2 * np.pi, -np.pi, np.pi, spiral, 1.5),
+    1: (0, 2 * np.pi, -0.5, 0.5, mobius, 4),
+    2: (0, 2 * np.pi, 0, 2 * np.pi, torus, 3),
+    3: (0, 4 * np.pi, -2, 2, screw, 0.7),
+    4: (0, 2 * np.pi, 0, 6 * np.pi, sea_shell, 1.5e-8),
+}
 
 
-def load_lab(alpha, beta, details, lab):
-    info = get_info_lab(lab)
+def get_surface_info(surface_type: int) -> tuple:
+    """
+    Возвращает параметры для типа поверхности.
+    
+    Args:
+        surface_type: Индекс типа поверхности (0-4).
+        
+    Returns:
+        Кортеж (U_min, U_max, V_min, V_max, function, scale).
+        
+    Raises:
+        KeyError: Если тип поверхности не существует.
+    """
+    return SURFACE_CONFIG[surface_type]
 
-    U, V = np.meshgrid(np.linspace(info[0], info[1], details), np.linspace(info[2], info[3], details), indexing='ij')
-    X, Y, Z = info[4](alpha, beta, U, V)
 
-    # X = (alpha + beta * np.cos(V)) * np.cos(U)
-    # Y = (alpha + beta * np.cos(V)) * np.sin(U)
-    # Z = beta * np.sin(V) + alpha * U
+def load_parametric_surface(
+    alpha: float,
+    beta: float,
+    details: int,
+    surface_type: int
+) -> list[Polygon]:
+    """
+    Загружает полигоны параметрической поверхности.
+    
+    Args:
+        alpha, beta: Параметры формы поверхности.
+        details: Количество точек разбиения по каждому параметру.
+        surface_type: Тип поверхности (0-4).
+        
+    Returns:
+        Список полигонов с цветами.
+    """
+    u_min, u_max, v_min, v_max, func, scale = get_surface_info(surface_type)
+    
+    U, V = np.meshgrid(
+        np.linspace(u_min, u_max, details),
+        np.linspace(v_min, v_max, details),
+        indexing='ij'
+    )
+    
+    X, Y, Z = func(alpha, beta, U, V)
+    max_z = max(Z.max(), abs(Z.min()))
+    
+    polys = create_triangle_mesh(X, Y, Z, max_z, details)
+    
+    # Применяем масштаб
+    return [(poly * scale, color) for poly, color in polys]
 
-    return [(poly[0] * info[5], poly[1]) for poly in create_graphic(X, Y, Z, max(Z.max(), abs(-Z.min())), details)]
 
-
-def load_graphic(func, details, far):
-    u = np.linspace(-far, far, details)
+def load_graphic(
+    func: callable,
+    details: int,
+    range_limit: float
+) -> list[Polygon]:
+    """
+    Загружает полигоны для графика функции z = f(x, y).
+    
+    Args:
+        func: Функция двух переменных, принимает массивы numpy.
+        details: Количество точек разбиения.
+        range_limit: Диапазон по X и Y: [-range_limit, range_limit].
+        
+    Returns:
+        Список полигонов с цветами.
+    """
+    u = np.linspace(-range_limit, range_limit, details)
     x, y = np.meshgrid(u, u, indexing='ij')
     z = func(x, y)
-    # print(x, y, z)
-    return create_graphic(x, y, z, far, details)
+    
+    return create_triangle_mesh(x, y, z, range_limit, details)
 
 
-def create_graphic(x, y, z, far, details):
-    z = np.clip(z, -far, far)
-
-    tris1 = np.empty((details - 1, details - 1, 3, 3))
-    tris2 = np.empty((details - 1, details - 1, 3, 3))
-
+def create_triangle_mesh(
+    x: NDArray,
+    y: NDArray,
+    z: NDArray,
+    max_z: float,
+    details: int
+) -> list[Polygon]:
+    """
+    Создаёт сетку треугольников из массивов координат.
+    
+    Генерирует двустороннюю поверхность с раскраской по высоте.
+    
+    Args:
+        x, y, z: 2D массивы координат точек.
+        max_z: Максимальная высота для ограничения и раскраски.
+        details: Размер сетки.
+        
+    Returns:
+        Список полигонов с цветами.
+    """
+    # Ограничиваем значения Z
+    z = np.clip(z, -max_z, max_z)
+    
+    # Создаём массивы для двух типов треугольников в каждой ячейке
+    n = details - 1
+    tris1 = np.empty((n, n, 3, 3), dtype=np.float32)
+    tris2 = np.empty((n, n, 3, 3), dtype=np.float32)
+    
+    # Первый тип: верхний правый угол ячейки
     tris1[:, :, 0] = np.stack([x[1:, 1:], y[1:, 1:], z[1:, 1:]], axis=-1)
     tris1[:, :, 1] = np.stack([x[:-1, 1:], y[:-1, 1:], z[:-1, 1:]], axis=-1)
     tris1[:, :, 2] = np.stack([x[1:, :-1], y[1:, :-1], z[1:, :-1]], axis=-1)
-
+    
+    # Второй тип: нижний левый угол ячейки
     tris2[:, :, 0] = np.stack([x[:-1, :-1], y[:-1, :-1], z[:-1, :-1]], axis=-1)
     tris2[:, :, 1] = np.stack([x[1:, :-1], y[1:, :-1], z[1:, :-1]], axis=-1)
     tris2[:, :, 2] = np.stack([x[:-1, 1:], y[:-1, 1:], z[:-1, 1:]], axis=-1)
-
+    
+    # Объединяем все треугольники (лицевые и обратные стороны)
     all_tris = np.vstack([
         tris1.reshape(-1, 3, 3),
         tris2.reshape(-1, 3, 3),
-        np.flip(tris1, axis=2).reshape(-1, 3, 3),
-        np.flip(tris2, axis=2).reshape(-1, 3, 3)
+        np.flip(tris1, axis=2).reshape(-1, 3, 3),  # Обратная сторона
+        np.flip(tris2, axis=2).reshape(-1, 3, 3),  # Обратная сторона
     ])
+    
+    # Фильтруем треугольники на границе (полностью на пределе Z)
+    result = []
+    for tri in all_tris:
+        # Пропускаем если все три вершины на границе
+        if not (abs(tri[0, 2]) == max_z and abs(tri[1, 2]) == max_z and abs(tri[2, 2]) == max_z):
+            result.append((tri, get_colors(tri, max_z)))
+    
+    return result
 
-    return [(tri, (get_colors(tri, far))) for tri in all_tris if
-            abs(tri[0, 2]) != far or abs(tri[1, 2]) != far or abs(tri[2, 2]) != far]
 
-
-if __name__ == '__main__':
-    # Фиксируем alpha и beta для одного графика
-    alpha = 1
-    beta = 1
-    n = 300
-    u = np.linspace(0, 4 * np.pi, n)
-    v = np.linspace(0, 2 * np.pi, n)
-    U, V = np.meshgrid(u, v)
-    # # U,V = u,v
-    # X = alpha * U * np.cos(U)
-    # Y = beta * U * np.sin(U)
-    # Z = V
-
-    X = (alpha + beta * np.cos(V)) * np.cos(U)
-    Y = (alpha + beta * np.cos(V)) * np.sin(U)
-    Z = beta * np.sin(V) + alpha * u
-
-    print(X, Y, Z, sep='\n')
-
-    # print(load_graphic(1,2,5))
-    #
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    surf = ax.plot_surface(X, Y, Z, cmap='viridis', alpha=0.8)
-
-    #
-    # def update(frame):
-    #     ax.view_init(elev=30, azim=frame)  # elev = угол наклона, azim = азимут
-    #     return surf,
-    #
-    #
-    # # Создаем анимацию
-    # ani = FuncAnimation(
-    #    fig,
-    #    update,
-    #    frames=np.arange(0, 360, 1),  # Полный оборот (0° до 360°)
-    #    interval=50,  # Задержка между кадрами (мс)
-    #    blit=True
-    # )
-    ax.view_init(elev=20, azim=50)  # elev = угол наклона, azim = азимут
-
-    plt.show()
+# Алиас для обратной совместимости
+load_lab = load_parametric_surface

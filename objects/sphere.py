@@ -1,58 +1,116 @@
+"""
+Сфера - геометрический примитив.
+
+Генерирует сферу с помощью параметрического представления
+через сферические координаты (theta, phi).
+"""
+
+import numpy as np
+
 from core.object import Object
-from core.utils import *
+from core.types import Color
+from core.constants import (
+    DEFAULT_COLOR,
+    DEFAULT_POSITION,
+    DEFAULT_ROTATION,
+    DEFAULT_SCALING,
+    MIN_SPHERE_DETAILS,
+    SPHERE_SCALE_MULTIPLIER
+)
 
 
 class Sphere(Object):
-    def get_color(self, poly):
-        return self.color
-
-    def __init__(self, position=(0, 0, 0), rotate=(0, 0, 0), details=8, scaling=(1, 1, 1),
-                 color=(255, 255, 255)):
-        self.position = np.array(position, dtype=np.float32)
-        self.Mx, self.My, self.Mz = create_matrix(rotate)
-        self.details = max(details, 3)
-        self.scale = np.array(scaling, dtype=np.float32) * 5 + 10 ** -10
-        self.color = color
-
-        self.polys = []
-
+    """
+    Сфера с настраиваемой детализацией.
+    
+    Генерируется через разбиение сферической поверхности на
+    треугольники с помощью широтно-долготной сетки.
+    
+    Attributes:
+        details: Количество сегментов по широте.
+    """
+    
+    def __init__(
+        self,
+        position: tuple[float, float, float] = DEFAULT_POSITION,
+        rotate: tuple[float, float, float] = DEFAULT_ROTATION,
+        details: int = 8,
+        scaling: tuple[float, float, float] = DEFAULT_SCALING,
+        color: Color = DEFAULT_COLOR,
+        inverted: bool = False
+    ) -> None:
+        """
+        Создаёт сферу.
+        
+        Args:
+            position: Позиция центра сферы в мировых координатах.
+            rotate: Углы поворота в градусах.
+            details: Детализация (минимум 3, больше = более гладкая).
+            scaling: Масштаб по осям (можно создать эллипсоид).
+            color: RGB цвет сферы.
+            inverted: Если True, нормали направлены внутрь.
+        """
+        self.details = max(details, MIN_SPHERE_DETAILS)
+        
+        # Применяем множитель масштаба специфичный для сферы
+        adjusted_scaling = tuple(s * SPHERE_SCALE_MULTIPLIER for s in scaling)
+        
+        super().__init__(
+            position=position,
+            rotate=rotate,
+            scaling=adjusted_scaling,
+            color=color,
+            inverted=inverted
+        )
+    
+    def _generate_polys(self) -> None:
+        """
+        Генерирует полигоны сферы.
+        
+        Использует параметрическое представление сферы:
+        x = sin(theta) * cos(phi)
+        y = sin(theta) * sin(phi)
+        z = cos(theta)
+        
+        где theta ∈ [0, π] (широта), phi ∈ [0, 2π) (долгота).
+        """
+        phi_steps = 2 * self.details    # Шаги по долготе
+        theta_steps = self.details       # Шаги по широте
+        
+        # Генерация вершин
         vertices = []
-        phi_steps = 2 *  self.details
-        theta_steps =  self.details
-
         for i in range(theta_steps + 1):
             theta = i * np.pi / theta_steps
             sin_theta = np.sin(theta)
             cos_theta = np.cos(theta)
-
+            
             for j in range(phi_steps):
                 phi = j * 2 * np.pi / phi_steps
                 sin_phi = np.sin(phi)
                 cos_phi = np.cos(phi)
-
+                
                 x = sin_theta * cos_phi
                 y = sin_theta * sin_phi
                 z = cos_theta
-                vertices.append(np.array([x, y, z]))
-
+                vertices.append(np.array([x, y, z], dtype=np.float32))
+        
         # Генерация треугольников
         for i in range(theta_steps):
             for j in range(phi_steps):
                 next_j = (j + 1) % phi_steps
-
+                
                 # Индексы вершин текущего и следующего кольца
                 i0 = i * phi_steps + j
                 i1 = i * phi_steps + next_j
                 i2 = (i + 1) * phi_steps + j
                 i3 = (i + 1) * phi_steps + next_j
-
-                if i != 0:  # Верхние треугольники
-                    self.polys.append((
-                        np.array([vertices[i0], vertices[i1], vertices[i2]]),
-                        self.color
-                    ))
-                if i != theta_steps - 1:  # Нижние треугольники
-                    self.polys.append((
-                        np.array([vertices[i1], vertices[i3], vertices[i2]]),
-                        self.color
-                    ))
+                
+                # Верхний треугольник (пропускаем на полюсе)
+                if i != 0:
+                    tri = np.array([vertices[i0], vertices[i1], vertices[i2]])
+                    self.polys.append((tri, self.color))
+                
+                # Нижний треугольник (пропускаем на полюсе)
+                if i != theta_steps - 1:
+                    tri = np.array([vertices[i1], vertices[i3], vertices[i2]])
+                    self.polys.append((tri, self.color))

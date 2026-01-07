@@ -1,0 +1,5 @@
+# Py3D Engine Dependencies
+
+numpy>=1.20.0
+trimesh>=3.9.0    # Для загрузки GLTF моделей (опционально)
+

@@ -1,71 +1,210 @@
+"""
+Математические утилиты для 3D движка Py3D.
+
+Содержит функции для работы с векторами, матрицами поворота
+и преобразованиями координат.
+"""
+
 import numpy as np
+from numpy.typing import NDArray
 
 
-def to_radians(degrees):
+def to_radians(degrees: float) -> float:
+    """
+    Преобразует градусы в радианы.
+    
+    Args:
+        degrees: Угол в градусах.
+        
+    Returns:
+        Угол в радианах, нормализованный в диапазон [0, 2π).
+    """
     return (degrees * np.pi / 180) % (2 * np.pi)
 
 
-def get_len(vector):
-    return np.sqrt(sum(vector ** 2))
+def get_len(vector: NDArray) -> float:
+    """
+    Вычисляет длину (норму) вектора.
+    
+    Args:
+        vector: Вектор произвольной размерности.
+        
+    Returns:
+        Евклидова длина вектора.
+    """
+    return np.sqrt(np.sum(vector ** 2))
 
 
-def get_dist(dot1, dot2):
-    return get_len(dot1 - dot2)
+def get_dist(point1: NDArray, point2: NDArray) -> float:
+    """
+    Вычисляет расстояние между двумя точками.
+    
+    Args:
+        point1: Первая точка.
+        point2: Вторая точка.
+        
+    Returns:
+        Евклидово расстояние между точками.
+    """
+    return get_len(point1 - point2)
 
 
-def set_len(vector, length):
-    if get_len(vector) == 0:
+def set_len(vector: NDArray, length: float) -> NDArray:
+    """
+    Изменяет длину вектора на заданную.
+    
+    Args:
+        vector: Исходный вектор.
+        length: Желаемая длина.
+        
+    Returns:
+        Вектор того же направления с заданной длиной.
+        Если исходный вектор нулевой, возвращает его без изменений.
+    """
+    vec_len = get_len(vector)
+    if vec_len == 0:
         return vector
-    return vector * length / get_len(vector)
+    return vector * length / vec_len
 
 
-def set_ort(vector):
+def set_ort(vector: NDArray) -> NDArray:
+    """
+    Нормализует вектор (приводит к единичной длине).
+    
+    Args:
+        vector: Вектор для нормализации.
+        
+    Returns:
+        Единичный вектор того же направления.
+    """
     return set_len(vector, 1)
 
 
-def create_matrix(rotate):
-    rotate = np.radians(rotate)
-    cos = np.cos(rotate)
-    sin = np.sin(rotate)
+def create_matrix(rotate: tuple[float, float, float]) -> tuple[NDArray, NDArray, NDArray]:
+    """
+    Создаёт матрицы поворота вокруг осей X, Y, Z.
+    
+    Использует соглашение об углах Эйлера: поворот вокруг X,
+    затем вокруг Y, затем вокруг Z.
+    
+    Args:
+        rotate: Углы поворота в градусах (rx, ry, rz).
+        
+    Returns:
+        Кортеж из трёх матриц поворота 3x3 (Mx, My, Mz).
+    """
+    rotate_rad = np.radians(rotate)
+    cos = np.cos(rotate_rad)
+    sin = np.sin(rotate_rad)
 
+    # Матрица поворота вокруг оси X
     Mx = np.array([
         [1, 0, 0],
         [0, cos[0], -sin[0]],
         [0, sin[0], cos[0]]
-    ])
+    ], dtype=np.float32)
 
+    # Матрица поворота вокруг оси Y
     My = np.array([
         [cos[1], 0, sin[1]],
         [0, 1, 0],
         [-sin[1], 0, cos[1]]
-    ])
+    ], dtype=np.float32)
 
+    # Матрица поворота вокруг оси Z
     Mz = np.array([
         [cos[2], -sin[2], 0],
         [sin[2], cos[2], 0],
         [0, 0, 1]
-    ])
+    ], dtype=np.float32)
 
     return Mx, My, Mz
 
 
-def get_angle(vector1, vector2):
-    return np.acos(np.dot(set_ort(vector1), set_ort(vector2)))
+def get_angle(vector1: NDArray, vector2: NDArray) -> float:
+    """
+    Вычисляет угол между двумя векторами.
+    
+    Args:
+        vector1: Первый вектор.
+        vector2: Второй вектор.
+        
+    Returns:
+        Угол между векторами в радианах [0, π].
+    """
+    dot = np.dot(set_ort(vector1), set_ort(vector2))
+    # Ограничиваем значение для избежания ошибок arccos
+    dot = np.clip(dot, -1.0, 1.0)
+    return np.arccos(dot)
 
 
-def to_new_system(Mx, My, Mz, position, vectors):
-    return vectors @ Mx @ My @ Mz + position
+def to_new_system(
+    Mx: NDArray, 
+    My: NDArray, 
+    Mz: NDArray, 
+    position: NDArray, 
+    vertices: NDArray
+) -> NDArray:
+    """
+    Преобразует вершины в новую систему координат.
+    
+    Применяет матрицы поворота и смещение позиции.
+    Порядок применения: Mx -> My -> Mz -> смещение.
+    
+    Args:
+        Mx: Матрица поворота вокруг оси X.
+        My: Матрица поворота вокруг оси Y.
+        Mz: Матрица поворота вокруг оси Z.
+        position: Вектор смещения (позиция объекта).
+        vertices: Массив вершин для преобразования.
+        
+    Returns:
+        Массив преобразованных вершин.
+    """
+    return vertices @ Mx @ My @ Mz + position
 
 
-def swap(poly):
+def swap(poly: NDArray) -> NDArray:
+    """
+    Меняет порядок вершин в треугольнике.
+    
+    Используется для инверсии нормали (изменения направления
+    обхода вершин с CW на CCW или наоборот).
+    
+    Args:
+        poly: Треугольник (массив 3x3 вершин).
+        
+    Returns:
+        Треугольник с переставленными вершинами [0, 2, 1].
+    """
     temp = poly.copy()
     temp[1], temp[2] = temp[2].copy(), temp[1].copy()
     return temp
 
 
-def to_float(poly):
-    return [(float(i[0]), float(i[1])) for i in list(poly)]
+def to_float(poly: list) -> list[tuple[float, float]]:
+    """
+    Преобразует координаты полигона в список float-кортежей.
+    
+    Используется для передачи координат в tkinter Canvas.
+    
+    Args:
+        poly: Список 2D точек (например, экранных координат).
+        
+    Returns:
+        Список кортежей (x, y) с float координатами.
+    """
+    return [(float(point[0]), float(point[1])) for point in poly]
 
 
-def mean(arr):
+def mean(arr: list | NDArray) -> float:
+    """
+    Вычисляет среднее арифметическое.
+    
+    Args:
+        arr: Список или массив чисел.
+        
+    Returns:
+        Среднее значение элементов.
+    """
     return sum(arr) / len(arr)
