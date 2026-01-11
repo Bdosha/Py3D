@@ -8,6 +8,8 @@
 import numpy as np
 from numpy.typing import NDArray
 
+from core import Vector3
+
 
 def to_radians(degrees: float) -> float:
     """
@@ -34,19 +36,6 @@ def get_len(vector: NDArray) -> float:
     """
     return np.sqrt(np.sum(vector ** 2))
 
-
-def get_dist(point1: NDArray, point2: NDArray) -> float:
-    """
-    Вычисляет расстояние между двумя точками.
-    
-    Args:
-        point1: Первая точка.
-        point2: Вторая точка.
-        
-    Returns:
-        Евклидово расстояние между точками.
-    """
-    return get_len(point1 - point2)
 
 
 def set_len(vector: NDArray, length: float) -> NDArray:
@@ -80,7 +69,7 @@ def set_ort(vector: NDArray) -> NDArray:
     return set_len(vector, 1)
 
 
-def create_matrix(rotate: tuple[float, float, float]) -> tuple[NDArray, NDArray, NDArray]:
+def create_matrix(rotate: Vector3) -> tuple[NDArray, NDArray, NDArray]:
     """
     Создаёт матрицы поворота вокруг осей X, Y, Z.
     
@@ -139,28 +128,26 @@ def get_angle(vector1: NDArray, vector2: NDArray) -> float:
 
 
 def to_new_system(
-    Mx: NDArray, 
-    My: NDArray, 
-    Mz: NDArray, 
-    position: NDArray, 
-    vertices: NDArray
+        direction: Vector3,
+        vertices: NDArray,
+        position: NDArray = np.array([0, 0, 0]),
 ) -> NDArray:
     """
     Преобразует вершины в новую систему координат.
-    
+
+    Вычисляет матрицы поворота по направлению.
     Применяет матрицы поворота и смещение позиции.
     Порядок применения: Mx -> My -> Mz -> смещение.
     
     Args:
-        Mx: Матрица поворота вокруг оси X.
-        My: Матрица поворота вокруг оси Y.
-        Mz: Матрица поворота вокруг оси Z.
-        position: Вектор смещения (позиция объекта).
+        direction: Вектор направления объекта
         vertices: Массив вершин для преобразования.
-        
+        position: Вектор смещения (позиция объекта).
+
     Returns:
         Массив преобразованных вершин.
     """
+    Mx, My, Mz = create_matrix(direction)
     return vertices @ Mx @ My @ Mz + position
 
 

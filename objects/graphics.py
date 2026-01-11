@@ -9,9 +9,9 @@
 import numpy as np
 
 from core.object import Object
-from core.types import Color, SurfaceFunction
+from core.types import SurfaceFunction, Polygon
 from core.constants import DEFAULT_POSITION, DEFAULT_ROTATION, DEFAULT_SCALING
-from .load_graphic import get_colors, load_parametric_surface, load_graphic
+from .load_graphic import load_parametric_surface, load_graphic
 
 
 class Graphic(Object):
@@ -23,22 +23,22 @@ class Graphic(Object):
     
     Цвет полигонов определяется высотой (координатой Z).
     """
-    
+
     def __init__(
-        self,
-        position: tuple[float, float, float] = DEFAULT_POSITION,
-        rotate: tuple[float, float, float] = DEFAULT_ROTATION,
-        z_func: SurfaceFunction = None,
-        details: int = 20,
-        scaling: tuple[float, float, float] = DEFAULT_SCALING,
-        inverted: bool = False
+            self,
+            position: tuple[float, float, float] = DEFAULT_POSITION,
+            direction: tuple[float, float, float] = DEFAULT_ROTATION,
+            z_func: SurfaceFunction = None,
+            details: int = 20,
+            scaling: tuple[float, float, float] = DEFAULT_SCALING,
+            inverted: bool = False
     ) -> None:
         """
         Создаёт график функции.
         
         Args:
             position: Позиция центра графика.
-            rotate: Углы поворота в градусах.
+            direction: Углы поворота в градусах.
             z_func: Функция z = f(x, y), принимает массивы numpy.
             details: Количество точек разбиения по каждой оси.
             scaling: Масштаб по осям.
@@ -47,31 +47,18 @@ class Graphic(Object):
         self.z_func = z_func if z_func is not None else lambda x, y: np.zeros_like(x)
         self.details = details
         self._range = 5  # Диапазон по X и Y: [-range, range]
-        
+
         super().__init__(
             position=position,
-            rotate=rotate,
+            direction=direction,
             scaling=scaling,
             color=(255, 255, 255),  # Цвет вычисляется динамически
             inverted=inverted
         )
-    
-    def _generate_polys(self) -> None:
+
+    def _generate_polygons(self) -> list[Polygon]:
         """Генерирует полигоны графика функции."""
-        self.polys = load_graphic(self.z_func, self.details, self._range)
-    
-    def get_color(self, poly: np.ndarray) -> Color:
-        """
-        Вычисляет цвет полигона на основе высоты.
-        
-        Args:
-            poly: Треугольник (массив 3x3 вершин).
-            
-        Returns:
-            RGB цвет, зависящий от координаты Z.
-        """
-        max_height = max(poly[:, 2].max(), abs(poly[:, 2].min()))
-        return get_colors(poly, max_height)
+        return load_graphic(self.z_func, self.details, self._range)
 
 
 class ParametricSurface(Object):
@@ -87,29 +74,29 @@ class ParametricSurface(Object):
     
     Цвет определяется высотой точки на поверхности.
     """
-    
+
     # Константы для типов поверхностей
     SPIRAL = 0
     MOBIUS = 1
     TORUS = 2
     SCREW = 3
     SEA_SHELL = 4
-    
+
     def __init__(
-        self,
-        position: tuple[float, float, float] = DEFAULT_POSITION,
-        rotate: tuple[float, float, float] = DEFAULT_ROTATION,
-        surface_type: int = 0,
-        details: int = 10,
-        scaling: tuple[float, float, float] = DEFAULT_SCALING,
-        inverted: bool = False
+            self,
+            position: tuple[float, float, float] = DEFAULT_POSITION,
+            direction: tuple[float, float, float] = DEFAULT_ROTATION,
+            surface_type: int = 0,
+            details: int = 10,
+            scaling: tuple[float, float, float] = DEFAULT_SCALING,
+            inverted: bool = False
     ) -> None:
         """
         Создаёт параметрическую поверхность.
         
         Args:
             position: Позиция центра поверхности.
-            rotate: Углы поворота в градусах.
+            direction: Углы поворота в градусах.
             surface_type: Тип поверхности (0-4, см. константы класса).
             details: Детализация сетки.
             scaling: Масштаб по осям.
@@ -117,36 +104,23 @@ class ParametricSurface(Object):
         """
         self.surface_type = surface_type
         self.details = details
-        
+
         super().__init__(
             position=position,
-            rotate=rotate,
+            direction=direction,
             scaling=scaling,
             color=(255, 255, 255),  # Цвет вычисляется динамически
             inverted=inverted
         )
-    
-    def _generate_polys(self) -> None:
+
+    def _generate_polygons(self) -> list[Polygon]:
         """Генерирует полигоны параметрической поверхности."""
-        self.polys = load_parametric_surface(
+        return load_parametric_surface(
             alpha=1,
             beta=1,
             details=self.details,
             surface_type=self.surface_type
         )
-    
-    def get_color(self, poly: np.ndarray) -> Color:
-        """
-        Вычисляет цвет полигона на основе высоты.
-        
-        Args:
-            poly: Треугольник (массив 3x3 вершин).
-            
-        Returns:
-            RGB цвет, зависящий от координаты Z.
-        """
-        max_height = max(poly[:, 2].max(), abs(poly[:, 2].min()))
-        return get_colors(poly, max_height)
 
 
 # Алиас для обратной совместимости

@@ -6,22 +6,22 @@
 """
 
 import numpy as np
-from numpy.typing import NDArray
 
+from . import Object, Polygon
 from .types import Vector3, Vector2, Triangle, ScreenCoords
 from .constants import (
     DEFAULT_FOV,
     DEFAULT_FOCUS,
     DEFAULT_POSITION,
     DEFAULT_DIRECTION,
-    PROJECTION_SCALE,
     MATRIX_REGULARIZATION,
     UP_VECTOR
 )
+from . import constants
 from .utils import to_radians, set_ort, get_angle
 
 
-class Camera:
+class Camera(Object):
     """
     Камера для проекции 3D сцены на 2D экран.
     
@@ -35,12 +35,12 @@ class Camera:
         focus: Фокусное расстояние.
         view_dot: Точка фокуса для проекции.
     """
-    
+
     def __init__(
-        self,
-        position: tuple[float, float, float] = DEFAULT_POSITION,
-        direction: tuple[float, float, float] = DEFAULT_DIRECTION,
-        fov: float = DEFAULT_FOV
+            self,
+            position: tuple[float, float, float] = DEFAULT_POSITION,
+            direction: tuple[float, float, float] = DEFAULT_DIRECTION,
+            fov: float = DEFAULT_FOV
     ) -> None:
         """
         Создаёт камеру.
@@ -50,19 +50,21 @@ class Camera:
             direction: Направление взгляда (будет нормализовано).
             fov: Угол обзора в градусах (обычно 60-120).
         """
-        self.position: Vector3 = np.array(DEFAULT_POSITION, dtype=np.float32)
-        self.direction: Vector3 = np.array(DEFAULT_DIRECTION, dtype=np.float32)
+        super().__init__(
+            position=position,
+            direction=direction,
+        )
+
         self.FOV: float = to_radians(180 - DEFAULT_FOV)
         self.focus: float = DEFAULT_FOCUS
-        self.view_dot: Vector3 = np.array(DEFAULT_POSITION, dtype=np.float32)
-        
-        self.move_to(position, direction, fov)
-    
-    def move_to(
-        self,
-        position: tuple[float, float, float] = DEFAULT_POSITION,
-        direction: tuple[float, float, float] = DEFAULT_DIRECTION,
-        fov: float = DEFAULT_FOV
+
+        self.set_position(position, direction, fov)
+
+    def set_position(
+            self,
+            position: tuple[float, float, float] = DEFAULT_POSITION,
+            direction: tuple[float, float, float] = DEFAULT_DIRECTION,
+            fov: float = DEFAULT_FOV
     ) -> None:
         """
         Перемещает камеру в новую позицию с новым направлением.
@@ -75,22 +77,22 @@ class Camera:
         # Защита от нулевого направления
         if all(d == 0 for d in direction):
             direction = DEFAULT_DIRECTION
-        
+
         self.FOV = to_radians(180 - fov)
         self.focus = DEFAULT_FOCUS
         self.position = np.array(position, dtype=np.float32)
         self.direction = set_ort(np.array(direction, dtype=np.float32))
-        
+
         # Вычисляем точку фокуса для проекции
         # view_dot находится перед камерой на расстоянии, зависящем от FOV
         self.view_dot = self.position + self.direction * (self.focus / 2 * np.tan(self.FOV / 2))
-    
+
     def is_visible(self, poly: Triangle) -> bool:
         """
         Проверяет видимость полигона.
         
         Выполняет две проверки:
-        1. Frustum culling: полигон в поле зрения камеры
+        1. Frustum culling: хотя бы одна вершина в поле зрения камеры
         2. Backface culling: полигон обращён к камере
         
         Args:
@@ -100,25 +102,30 @@ class Camera:
             True если полигон видим, False если его можно отсечь.
         """
         a, b, c = poly
-        center = (a + b + c) / 3
-        
-        # Вектор от камеры к центру полигона
-        to_poly = center - self.position
-        
-        # Frustum culling: проверяем угол между направлением и вектором к полигону
-        if get_angle(to_poly, self.direction) > self.FOV / 2:
-            return False
-        
-        # Backface culling: вычисляем нормаль полигона
+
+        # Вычисляем нормаль для backface culling
         normal = set_ort(np.cross(b - a, c - a))
-        
-        # Полигон виден если его нормаль направлена к камере
-        if np.dot(normal, to_poly) < 0:
+
+        # Вектор от камеры к центру (для backface culling)
+        center = (a + b + c) / 3
+        to_center = center - self.position
+
+        # Backface culling: полигон должен быть обращён к камере
+        if np.dot(normal, to_center) < 0:
             return False
-        
-        return True
-    
-    def to_screen(self, point: Vector3) -> Vector2:
+
+        # Frustum culling: проверяем каждую вершину
+        # Полигон видим, если хотя бы одна вершина в поле зрения
+        half_fov = self.FOV / 2
+
+        for vertex in [a, b, c]:
+            to_vertex = vertex - self.position
+            if get_angle(to_vertex, self.direction) <= half_fov:
+                return True
+
+        return False
+
+    def transform_point_to_screen(self, point: Vector3) -> Vector2:
         """
         Проецирует 3D точку на 2D экран (относительно центра).
         
@@ -136,22 +143,23 @@ class Camera:
         a = np.cross(self.direction, np.array(UP_VECTOR))
         # b - вектор вверх камеры (перпендикулярен a и direction)
         b = np.cross(a, self.direction)
-        
+
         # Матрица преобразования из мировых координат в координаты камеры
         M = np.array([a, b, self.direction]).T
         P = self.view_dot.T
-        
+
         # Инвертируем матрицу (с регуляризацией для вырожденных случаев)
         try:
             M_inv = np.linalg.inv(M)
         except np.linalg.LinAlgError:
             M_inv = np.linalg.inv(M + MATRIX_REGULARIZATION)
-        
+
         # Преобразуем точку и масштабируем
-        result = (M_inv @ (point.T - P.T))[:2] * (PROJECTION_SCALE / self.focus)
+        result = (M_inv @ (point.T - P.T))[:2] * (constants.PROJECTION_SCALE / self.focus)
+        result[1] *= -1  # Инвертируем Y (экранные координаты растут вниз)
         return result
-    
-    def project_point(self, world_point: Vector3, screen_size: Vector2) -> Vector2:
+
+    def project_point(self, world_point: Vector3) -> Vector2 | None:
         """
         Проецирует 3D точку на экран с учётом размера экрана.
         
@@ -159,48 +167,58 @@ class Camera:
         
         Args:
             world_point: 3D точка в мировых координатах.
-            screen_size: Размер экрана (ширина, высота).
-            
+
         Returns:
-            Абсолютные 2D координаты на экране.
+            Абсолютные 2D координаты на экране, или None если точка за камерой.
         """
         # Вектор от камеры к точке
         ray = world_point - self.position
-        
+
+        # Проверяем что точка перед камерой (не за ней и не слишком близко)
+        depth = np.dot(ray, self.direction)
+        if depth < constants.NEAR_PLANE:
+            return None
+
         # Система уравнений для нахождения точки пересечения с плоскостью проекции
         A = np.array([
             self.direction,
             [ray[1], -ray[0], 0],
             [ray[2], 0, -ray[0]]
         ])
-        
+
         b = np.array([
             [(self.view_dot * self.direction).sum()],
             [ray[1] * self.position[0] - ray[0] * self.position[1]],
             [ray[2] * self.position[0] - ray[0] * self.position[2]]
         ])
-        
+
         try:
             intersection = np.linalg.solve(A, b).T[0]
         except np.linalg.LinAlgError:
             # Регуляризация для вырожденных случаев
             intersection = np.linalg.solve(A + MATRIX_REGULARIZATION, b + MATRIX_REGULARIZATION).T[0]
-        
-        # Преобразуем в экранные координаты
-        screen_coords = self.to_screen(intersection)
-        screen_coords[1] *= -1  # Инвертируем Y (экранные координаты растут вниз)
-        
-        return screen_coords + (screen_size / 2)
-    
-    def to_canvas(self, poly: Triangle, screen_size: Vector2) -> ScreenCoords:
+
+        return self.transform_point_to_screen(intersection)
+
+    def to_canvas(self, polygon: Triangle, screen_size: Vector2) -> ScreenCoords | None:
         """
         Проецирует треугольник на экран.
         
         Args:
-            poly: Треугольник (массив 3x3 вершин).
+            polygon: Треугольник (массив 3x3 вершин).
             screen_size: Размер экрана (ширина, высота).
             
         Returns:
-            Список из 3 точек в экранных координатах.
+            Список из 3 точек в экранных координатах,
+            или None если хотя бы одна вершина за камерой.
         """
-        return [self.project_point(poly[i], screen_size) for i in range(3)]
+        points = []
+        for i in range(3):
+            point = self.project_point(polygon[i])
+            if point is None:
+                return None  # Вершина за камерой - пропускаем весь полигон
+            points.append(point + (screen_size / 2))
+        return points
+
+    def _generate_polygons(self) -> list[Polygon]:
+        return []

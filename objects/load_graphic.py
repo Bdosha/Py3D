@@ -5,6 +5,7 @@
 - Функций z = f(x, y)
 - Параметрических поверхностей (u, v) -> (x, y, z)
 """
+from typing import Callable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -202,7 +203,7 @@ def load_parametric_surface(
 
 
 def load_graphic(
-    func: callable,
+    func: Callable,
     details: int,
     range_limit: float
 ) -> list[Polygon]:
