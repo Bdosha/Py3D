@@ -107,6 +107,105 @@ class Screen:
             anchor="nw"
         )
     
+    def draw_axes_gizmo(
+        self,
+        camera_direction: np.ndarray,
+        size: int = 50,
+        margin: int = 10
+    ) -> None:
+        """
+        Отрисовывает индикатор осей координат (gizmo).
+        
+        Показывает RGB оси (X-красный, Y-зелёный, Z-синий),
+        которые вращаются в соответствии с направлением камеры.
+        
+        Args:
+            camera_direction: Направление камеры (нормализованный вектор).
+            size: Длина осей в пикселях.
+            margin: Отступ от края экрана.
+        """
+        # Позиция центра gizmo (левый нижний угол)
+        center_x = margin + size
+        center_y = self.screen[1] - margin - size
+        
+        # Строим базис камеры для проекции осей
+        up = np.array([0, 0, 1], dtype=np.float32)
+        
+        # Вектор вправо камеры
+        right = np.cross(camera_direction, up)
+        right_len = np.linalg.norm(right)
+        if right_len > 0:
+            right = right / right_len
+        else:
+            right = np.array([1, 0, 0], dtype=np.float32)
+        
+        # Вектор вверх камеры
+        cam_up = np.cross(right, camera_direction)
+        cam_up_len = np.linalg.norm(cam_up)
+        if cam_up_len > 0:
+            cam_up = cam_up / cam_up_len
+        
+        # Оси мировой системы координат
+        axes = [
+            (np.array([1, 0, 0]), '#ff3333', 'X'),  # X - красный
+            (np.array([0, 1, 0]), '#33ff33', 'Y'),  # Y - зелёный  
+            (np.array([0, 0, 1]), '#3333ff', 'Z'),  # Z - синий
+        ]
+        
+        # Собираем данные для сортировки по глубине
+        axis_data = []
+        for axis_vec, color, label in axes:
+            # Проецируем ось на плоскость экрана
+            # x_screen = dot(axis, right), y_screen = dot(axis, cam_up)
+            x_proj = np.dot(axis_vec, right) * size
+            y_proj = np.dot(axis_vec, cam_up) * size
+            # Глубина для сортировки (насколько ось направлена к камере)
+            depth = np.dot(axis_vec, camera_direction)
+            
+            axis_data.append((depth, x_proj, y_proj, color, label))
+        
+        # Сортируем по глубине (дальние рисуем первыми)
+        axis_data.sort(key=lambda x: x[0])
+        
+        # Рисуем оси
+        for depth, x_proj, y_proj, color, label in axis_data:
+            end_x = center_x + x_proj
+            end_y = center_y - y_proj  # Инвертируем Y для экранных координат
+            
+            # Толщина линии зависит от того, направлена ли ось к нам
+            width = 3 if depth > 0 else 2
+            
+            # Рисуем линию оси
+            self.canvas.create_line(
+                center_x, center_y,
+                end_x, end_y,
+                fill=color,
+                width=width,
+                arrow=tk.LAST,
+                arrowshape=(8, 10, 4)
+            )
+            
+            # Подпись оси (немного дальше конца стрелки)
+            label_offset = 1.2
+            label_x = center_x + x_proj * label_offset
+            label_y = center_y - y_proj * label_offset
+            
+            self.canvas.create_text(
+                label_x, label_y,
+                text=label,
+                fill=color,
+                font=("Arial", 11, "bold"),
+                anchor="center"
+            )
+        
+        # Рисуем точку в центре
+        self.canvas.create_oval(
+            center_x - 3, center_y - 3,
+            center_x + 3, center_y + 3,
+            fill='white',
+            outline='#333333'
+        )
+    
     def multi_draw(self, polygons: list[DrawData]) -> None:
         """
         Отрисовывает список полигонов.

@@ -8,7 +8,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 
-from .types import Vector3, Triangle, Color, Polygon, VisibilityCheck
+from .types import Vector3, Color, Polygon, VisibilityCheck
 from .constants import (
     DEFAULT_POSITION,
     DEFAULT_ROTATION,
@@ -16,7 +16,7 @@ from .constants import (
     DEFAULT_COLOR,
     EPSILON
 )
-from .utils import create_matrix, to_new_system, swap
+from .utils import to_new_system, swap
 
 
 class Object(ABC):
@@ -28,128 +28,72 @@ class Object(ABC):
     
     Attributes:
         position: Позиция объекта в мировых координатах.
-        scale: Масштаб объекта по осям X, Y, Z.
-        inverted: Флаг инверсии нормалей (для внутренних поверхностей).
+        scaling: Масштаб объекта по осям X, Y, Z.
+        is_inverted: Флаг инверсии нормалей (для внутренних поверхностей).
         color: Базовый цвет объекта.
-        polys: Список полигонов объекта с цветами.
+        polygons: Список полигонов объекта с цветами.
         Mx, My, Mz: Матрицы поворота вокруг осей X, Y, Z.
     """
-    
+
     def __init__(
-        self,
-        position: tuple[float, float, float] = DEFAULT_POSITION,
-        rotate: tuple[float, float, float] = DEFAULT_ROTATION,
-        scaling: tuple[float, float, float] = DEFAULT_SCALING,
-        color: Color = DEFAULT_COLOR,
-        inverted: bool = False
+            self,
+            position: tuple[float, float, float] = DEFAULT_POSITION,
+            direction: tuple[float, float, float] = DEFAULT_ROTATION,
+            scaling: tuple[float, float, float] = DEFAULT_SCALING,
+            color: Color = DEFAULT_COLOR,
+            inverted: bool = False
     ) -> None:
         """
         Инициализирует базовые параметры объекта.
         
         Args:
             position: Позиция объекта в мировых координатах (x, y, z).
-            rotate: Углы поворота в градусах (rx, ry, rz).
+            direction: Углы поворота в градусах (rx, ry, rz).
             scaling: Масштаб по осям (sx, sy, sz).
             color: RGB цвет объекта (r, g, b), значения 0-255.
             inverted: Если True, нормали полигонов направлены внутрь.
         """
         self.position: Vector3 = np.array(position, dtype=np.float32)
-        self.Mx, self.My, self.Mz = create_matrix(rotate)
-        self.scale: Vector3 = np.array(scaling, dtype=np.float32) + EPSILON
+        self.direction: Vector3 = np.array(direction, dtype=np.float32)
+
+        # self.Mx, self.My, self.Mz = create_matrix(direction)
+
+        self.scaling: Vector3 = np.array(scaling, dtype=np.float32) + EPSILON
+
         self.color: Color = color
-        self.inverted: bool = inverted
-        self.polys: list[Polygon] = []
-        
-        # Генерация полигонов вызывается в конце инициализации
-        self._generate_polys()
-        
-        # Применение инверсии после генерации
-        if self.inverted:
-            self._apply_inversion()
-    
+        self.is_inverted: bool = inverted
+        self.polygons: list[Polygon] = self._apply_polygons()
+
     @abstractmethod
-    def _generate_polys(self) -> None:
+    def _generate_polygons(self) -> list[Polygon]:
         """
         Генерирует полигоны объекта.
         
         Этот метод должен быть реализован в каждом дочернем классе.
-        Должен заполнить self.polys списком кортежей (triangle, color).
+        Должен вернуть список кортежей (triangle, color).
         """
         pass
-    
-    def _apply_inversion(self) -> None:
+
+    @staticmethod
+    def _apply_inversion(polygons: list[Polygon]) -> list[Polygon]:
         """
         Инвертирует нормали всех полигонов.
-        
+
         Меняет порядок вершин в треугольниках для изменения
         направления нормалей (используется для внутренних поверхностей).
         """
         inverted_polys = []
-        for poly, color in self.polys:
+        for poly, color in polygons:
             inverted_polys.append((swap(poly), color))
-        self.polys = inverted_polys
-    
-    def to_system(self, vertices: Triangle) -> Triangle:
-        """
-        Преобразует вершины в мировую систему координат.
-        
-        Применяет матрицы поворота и смещение позиции.
-        
-        Args:
-            vertices: Массив вершин в локальных координатах.
-            
-        Returns:
-            Массив вершин в мировых координатах.
-        """
-        return to_new_system(self.Mx, self.My, self.Mz, self.position, vertices)
-    
-    def rotate_to(self, vertices: Triangle, rotate: tuple[float, float, float]) -> Triangle:
-        """
-        Поворачивает вершины на заданные углы.
-        
-        Args:
-            vertices: Массив вершин для поворота.
-            rotate: Углы поворота в градусах (rx, ry, rz).
-            
-        Returns:
-            Массив повёрнутых вершин.
-        """
-        Xb, Yb, Zb = create_matrix(rotate)
-        return to_new_system(Xb, Yb, Zb, np.array([0, 0, 0]), vertices)
-    
-    def move_to(self, position: tuple[float, float, float]) -> None:
-        """
-        Перемещает объект в новую позицию.
-        
-        Args:
-            position: Новая позиция объекта (x, y, z).
-        """
-        self.position = np.array(position, dtype=np.float32)
-    
-    def set_rotation(self, rotate: tuple[float, float, float]) -> None:
-        """
-        Устанавливает новый поворот объекта.
-        
-        Args:
-            rotate: Новые углы поворота в градусах (rx, ry, rz).
-        """
-        self.Mx, self.My, self.Mz = create_matrix(rotate)
-    
-    def get_color(self, poly: Triangle) -> Color:
-        """
-        Возвращает цвет для полигона.
-        
-        Может быть переопределён в дочерних классах для
-        динамического расчёта цвета (например, по высоте).
-        
-        Args:
-            poly: Треугольник для которого нужен цвет.
-            
-        Returns:
-            RGB цвет полигона.
-        """
-        return self.color
-    
+        return inverted_polys
+
+    def _apply_polygons(self):
+        temp_polygons = self._generate_polygons()
+        if self.is_inverted:
+            temp_polygons = Object._apply_inversion(temp_polygons)
+
+        return temp_polygons
+
     def get_visible_polys(self, visibility_check: VisibilityCheck) -> list[Polygon]:
         """
         Возвращает список видимых полигонов.
@@ -164,8 +108,12 @@ class Object(ABC):
             Список видимых полигонов с цветами.
         """
         visible = []
-        for poly, color in self.polys:
-            transformed = self.to_system(poly * self.scale)
+        for poly, color in self.polygons:
+
+            transformed = to_new_system(self.direction,
+                                        poly * self.scaling,
+                                        self.position)
+
             if visibility_check(transformed):
                 visible.append((transformed, color))
         return visible

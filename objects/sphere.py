@@ -8,7 +8,7 @@
 import numpy as np
 
 from core.object import Object
-from core.types import Color
+from core.types import Color, Polygon
 from core.constants import (
     DEFAULT_COLOR,
     DEFAULT_POSITION,
@@ -33,7 +33,7 @@ class Sphere(Object):
     def __init__(
         self,
         position: tuple[float, float, float] = DEFAULT_POSITION,
-        rotate: tuple[float, float, float] = DEFAULT_ROTATION,
+        direction: tuple[float, float, float] = DEFAULT_ROTATION,
         details: int = 8,
         scaling: tuple[float, float, float] = DEFAULT_SCALING,
         color: Color = DEFAULT_COLOR,
@@ -44,7 +44,7 @@ class Sphere(Object):
         
         Args:
             position: Позиция центра сферы в мировых координатах.
-            rotate: Углы поворота в градусах.
+            direction: Углы поворота в градусах.
             details: Детализация (минимум 3, больше = более гладкая).
             scaling: Масштаб по осям (можно создать эллипсоид).
             color: RGB цвет сферы.
@@ -57,13 +57,13 @@ class Sphere(Object):
         
         super().__init__(
             position=position,
-            rotate=rotate,
+            direction=direction,
             scaling=adjusted_scaling,
             color=color,
             inverted=inverted
         )
     
-    def _generate_polys(self) -> None:
+    def _generate_polygons(self) -> list[Polygon]:
         """
         Генерирует полигоны сферы.
         
@@ -95,6 +95,7 @@ class Sphere(Object):
                 vertices.append(np.array([x, y, z], dtype=np.float32))
         
         # Генерация треугольников
+        polygons = []
         for i in range(theta_steps):
             for j in range(phi_steps):
                 next_j = (j + 1) % phi_steps
@@ -108,9 +109,10 @@ class Sphere(Object):
                 # Верхний треугольник (пропускаем на полюсе)
                 if i != 0:
                     tri = np.array([vertices[i0], vertices[i1], vertices[i2]])
-                    self.polys.append((tri, self.color))
+                    polygons.append((tri, self.color))
                 
                 # Нижний треугольник (пропускаем на полюсе)
                 if i != theta_steps - 1:
                     tri = np.array([vertices[i1], vertices[i3], vertices[i2]])
-                    self.polys.append((tri, self.color))
+                    polygons.append((tri, self.color))
+        return polygons

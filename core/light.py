@@ -7,19 +7,19 @@
 
 import numpy as np
 
-from .types import Vector3, Triangle
+from . import Object
+from .types import Triangle, Polygon
 from .constants import (
     DEFAULT_POSITION,
     DEFAULT_DIRECTION,
     DEFAULT_FOV,
-    MIN_LIGHT_POWER,
-    LIGHT_POWER_DIVISOR,
-    LIGHT_FALLOFF_MULTIPLIER
+    LIGHT_POWER_DIVISOR
 )
+from . import constants
 from .utils import to_radians, set_ort, get_angle, get_len
 
 
-class Light:
+class Light(Object):
     """
     Направленный точечный источник света.
     
@@ -32,13 +32,13 @@ class Light:
         FOV: Угол конуса света в радианах.
         power: Мощность света (влияет на яркость и затухание).
     """
-    
+
     def __init__(
-        self,
-        position: tuple[float, float, float] = DEFAULT_POSITION,
-        direction: tuple[float, float, float] = DEFAULT_DIRECTION,
-        fov: float = DEFAULT_FOV,
-        power: float = 1.0
+            self,
+            position: tuple[float, float, float] = DEFAULT_POSITION,
+            direction: tuple[float, float, float] = DEFAULT_DIRECTION,
+            fov: float = DEFAULT_FOV,
+            power: float = 1.0
     ) -> None:
         """
         Создаёт источник света.
@@ -49,13 +49,17 @@ class Light:
             fov: Угол конуса света в градусах.
             power: Мощность света (минимум MIN_LIGHT_POWER).
         """
-        self.position: Vector3 = np.array(position, dtype=np.float32)
-        self.direction: Vector3 = set_ort(np.array(direction, dtype=np.float32))
+
+        super().__init__(
+            position=position,
+            direction=direction,
+        )
+        # self.direction: Vector3 = set_ort(np.array(direction, dtype=np.float32))
         self.FOV: float = to_radians(fov)
         # Нормализуем мощность с минимальным порогом
-        self.power: float = max(MIN_LIGHT_POWER, power) / LIGHT_POWER_DIVISOR
-    
-    def get_intensity(self, poly: Triangle) -> float:
+        self.power: float = max(constants.MIN_LIGHT_POWER, power) / LIGHT_POWER_DIVISOR
+
+    def get_intensity(self, polygon: Triangle) -> float:
         """
         Вычисляет интенсивность освещения для полигона.
         
@@ -65,32 +69,35 @@ class Light:
         - Угол относительно направления источника (FOV)
         
         Args:
-            poly: Треугольник (массив 3x3 вершин).
+            polygon: Треугольник (массив 3x3 вершин).
             
         Returns:
             Интенсивность освещения в диапазоне [0, 1].
         """
-        a, b, c = poly
+        a, b, c = polygon
         center = (a + b + c) / 3
-        
+
         # Нормаль полигона
         normal = set_ort(np.cross(b - a, c - a))
-        
+
         # Направление от источника к центру полигона
         to_poly = set_ort(center - self.position)
-        
+
         # Базовая интенсивность: косинус угла между нормалью и направлением к свету
         intensity = np.dot(normal, to_poly)
-        
+
         # Проверяем, находится ли полигон в конусе света
         angle_to_poly = get_angle(to_poly, self.direction)
         if angle_to_poly > self.FOV / 2:
             # Вне основного конуса - затухание по углу
             intensity = (intensity / angle_to_poly * self.FOV / 2) ** self.power
-        
+
         # Затухание по расстоянию
         distance = get_len(center - self.position)
-        falloff = (self.power * LIGHT_FALLOFF_MULTIPLIER) / distance
-        
+        falloff = (self.power * constants.LIGHT_FALLOFF_MULTIPLIER) / distance
+
         # Итоговая интенсивность (не меньше 0)
         return max(0.0, intensity * falloff)
+
+    def _generate_polygons(self) -> list[Polygon]:
+        return []

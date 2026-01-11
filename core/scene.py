@@ -15,6 +15,7 @@ from .player import Player
 from .screen import Screen
 from .light import Light
 from .object import Object
+from .editor import Editor
 from .types import Polygon, DrawData
 
 
@@ -32,7 +33,9 @@ class Scene:
         lights: Список источников света.
         screen: Экран для рендеринга.
         show_fps: Флаг отображения FPS.
+        show_axes: Флаг отображения индикатора осей.
         fullscreen: Флаг полноэкранного режима.
+        editor: Редактор сцены.
     """
     
     def __init__(
@@ -42,6 +45,7 @@ class Scene:
         objects: list[Object] = None,
         lights: list[Light] = None,
         show_fps: bool = False,
+        show_axes: bool = False,
         fullscreen: bool = False
     ) -> None:
         """
@@ -53,10 +57,12 @@ class Scene:
             objects: Список 3D объектов.
             lights: Список источников света.
             show_fps: Показывать счётчик FPS.
+            show_axes: Показывать индикатор осей координат.
             fullscreen: Запустить в полноэкранном режиме.
         """
         self.root = tk.Tk()
-        self.root.config(cursor="none")
+        self.root.title("Py3D Engine")
+        self.root.config(cursor="none", bg='#2b2b2b')
         
         # Время для расчёта FPS
         self._frame_start = time.time()
@@ -74,9 +80,18 @@ class Scene:
         self.screen = Screen(self.root, screen_size[0], screen_size[1])
         self._default_screen_size = screen_size
         
-        # Настройки
+        # Настройки отображения
         self.show_fps = show_fps
+        self.show_axes = show_axes
         self.fullscreen = fullscreen
+        
+        # Редактор сцены
+        self.editor = Editor(
+            self.root, self.objects, self.screen.canvas,
+            lights=self.lights, player=self.player
+        )
+        self._editor_mode = False
+        self._skip_mouse_event = False  # Флаг для пропуска первого события мыши после редактора
         
         # Привязка клавиш
         self._bind_controls()
@@ -88,17 +103,60 @@ class Scene:
         """Привязывает обработчики клавиш и мыши."""
         # Движение WASD
         for key in ['w', 's', 'a', 'd']:
-            self.root.bind(f'<{key}>', self.player.move)
+            self.root.bind(f'<{key}>', self._handle_movement)
         
         # Вверх/вниз
-        self.root.bind('<space>', self.player.move)
-        self.root.bind('<z>', self.player.move)
+        self.root.bind('<space>', self._handle_movement)
+        self.root.bind('<z>', self._handle_movement)
         
         # Поворот мышью
-        self.root.bind("<Motion>", self.player.turn)
+        self.root.bind("<Motion>", self._handle_mouse)
         
         # Переключение полноэкранного режима
         self.root.bind("<p>", self._toggle_fullscreen)
+        
+        # Редактор
+        self.root.bind("<Tab>", self._toggle_editor)
+        self.root.bind("<Escape>", self._deselect_object)
+    
+    def _handle_movement(self, event: Any) -> None:
+        """Обрабатывает движение (только если редактор не активен)."""
+        if not self._editor_mode:
+            self.player.move(event)
+    
+    def _handle_mouse(self, event: Any) -> None:
+        """Обрабатывает движение мыши (только если редактор не активен)."""
+        if self._editor_mode:
+            return
+        
+        # Пропускаем первое событие после закрытия редактора
+        if self._skip_mouse_event:
+            self._skip_mouse_event = False
+            # Обновляем last на текущую позицию курсора (относительно центра, с инверсией Y)
+            cursor = np.array([event.x, event.y], dtype=np.float32) - self.player.screen / 2
+            cursor[1] *= -1
+            self.player.last = cursor
+            return
+        
+        self.player.turn(event)
+    
+    def _toggle_editor(self, event: Any = None) -> None:
+        """Переключает режим редактора."""
+        self._editor_mode = not self._editor_mode
+        self.editor.toggle()
+        
+        # Меняем курсор
+        if self._editor_mode:
+            self.root.config(cursor="arrow")
+        else:
+            self.root.config(cursor="none")
+            # Пропускаем следующее событие мыши чтобы камера не "улетела"
+            self._skip_mouse_event = True
+    
+    def _deselect_object(self, event: Any = None) -> None:
+        """Снимает выделение объекта в редакторе."""
+        if self._editor_mode:
+            self.editor.deselect()
     
     def _toggle_fullscreen(self, event: Any = None) -> None:
         """
@@ -122,6 +180,9 @@ class Scene:
         # Пересоздаём canvas с новым размером
         self.screen.canvas.destroy()
         self.screen = Screen(self.root, new_size[0], new_size[1])
+        self.editor.set_canvas(self.screen.canvas)
+        self.editor.set_lights(self.lights)
+        self.editor.set_player(self.player)
     
     def _sort_by_distance(self, polygons: list[Polygon]) -> list[Polygon]:
         """
@@ -146,7 +207,7 @@ class Scene:
         
         return [polygons[i] for i in sorted_indices]
     
-    def _compute_lighting(self, poly: np.ndarray) -> float:
+    def _compute_lighting(self, poly: np.ndarray) -> float | None:
         """
         Вычисляет освещённость полигона от всех источников.
         
@@ -164,6 +225,27 @@ class Scene:
             total_intensity += light.get_intensity(poly)
         
         return min(1.0, total_intensity)
+    
+    def add_object(self, obj: Object) -> None:
+        """
+        Добавляет объект на сцену.
+        
+        Args:
+            obj: 3D объект для добавления.
+        """
+        self.objects.append(obj)
+        self.editor.update_objects(self.objects)
+    
+    def remove_object(self, index: int) -> None:
+        """
+        Удаляет объект со сцены.
+        
+        Args:
+            index: Индекс объекта в списке.
+        """
+        if 0 <= index < len(self.objects):
+            self.objects.pop(index)
+            self.editor.update_objects(self.objects)
     
     def render(self) -> None:
         """
@@ -203,8 +285,21 @@ class Scene:
         # Отрисовываем
         self.screen.multi_draw(draw_data)
         
-        # FPS
+        # HUD элементы
         if self.show_fps:
             frame_time = time.time() - self._frame_start
             fps = 1.0 / frame_time if frame_time > 0 else 0
             self.screen.draw_fps(fps)
+        
+        if self.show_axes:
+            self.screen.draw_axes_gizmo(self.player.direction)
+        
+        # Подсказка про редактор
+        if not self._editor_mode:
+            self.screen.canvas.create_text(
+                self.screen.screen[0] - 10, 10,
+                text="Tab - Editor",
+                fill='#888888',
+                font=("Arial", 10),
+                anchor="ne"
+            )
