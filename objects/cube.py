@@ -9,7 +9,7 @@ import numpy as np
 
 from core.object import Object
 from core.utils import swap, to_new_system
-from core.types import Color, Polygon, Triangle
+from core.types import Color, Polygon
 from core.constants import DEFAULT_COLOR, DEFAULT_POSITION, DEFAULT_ROTATION, DEFAULT_SCALING
 
 
@@ -55,19 +55,7 @@ class Cube(Object):
             inverted=inverted
         )
 
-    @staticmethod
-    def rotate_to(vertices: Triangle, direction: tuple[float, float, float]) -> Triangle:
-        """
-        Поворачивает вершины на заданные углы.
 
-        Args:
-            vertices: Массив вершин для поворота.
-            rotate: Углы поворота в градусах (rx, ry, rz).
-
-        Returns:
-            Массив повёрнутых вершин.
-        """
-        return to_new_system(direction, vertices)
 
     def _generate_polygons(self) -> list[Polygon]:
         """
@@ -110,19 +98,19 @@ class Cube(Object):
 
                 # Боковые грани через поворот базовых треугольников
                 # Грань Y+ (поворот на 90° вокруг X)
-                created_polygons.append((Cube.rotate_to(tri1, (90, 0, 0)), self.color))
-                created_polygons.append((Cube.rotate_to(tri2, (90, 0, 0)), self.color))
+                created_polygons.append((to_new_system(tri1, (90, 0, 0)), self.color))
+                created_polygons.append((to_new_system(tri2, (90, 0, 0)), self.color))
 
                 # Грань Y- (поворот на -90° вокруг X)
-                created_polygons.append((Cube.rotate_to(tri1, (-90, 0, 0)), self.color))
-                created_polygons.append((Cube.rotate_to(tri2, (-90, 0, 0)), self.color))
+                created_polygons.append((to_new_system(tri1, (-90, 0, 0)), self.color))
+                created_polygons.append((to_new_system(tri2, (-90, 0, 0)), self.color))
 
                 # Грань X+ (поворот на 90° вокруг Y)
-                created_polygons.append((Cube.rotate_to(tri1, (0, 90, 0)), self.color))
-                created_polygons.append((Cube.rotate_to(tri2, (0, 90, 0)), self.color))
+                created_polygons.append((to_new_system(tri1, (0, 90, 0)), self.color))
+                created_polygons.append((to_new_system(tri2, (0, 90, 0)), self.color))
 
                 # Грань X- (поворот на -90° вокруг Y)
-                created_polygons.append((Cube.rotate_to(tri1, (0, -90, 0)), self.color))
-                created_polygons.append((Cube.rotate_to(tri2, (0, -90, 0)), self.color))
+                created_polygons.append((to_new_system(tri1, (0, -90, 0)), self.color))
+                created_polygons.append((to_new_system(tri2, (0, -90, 0)), self.color))
 
         return created_polygons

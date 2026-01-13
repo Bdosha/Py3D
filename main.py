@@ -32,7 +32,7 @@ def main():
         position=(0, 10, 0),
         details=1,
         side=1,
-        color=(255, 255, 255)
+        color=(255, 255, 255),
     )
     cube = obj.Model(model_path="objects/scene.gltf",
         position=(0, 10, 0),
@@ -40,11 +40,9 @@ def main():
 
     # Куб с инвертированными нормалями (скайбокс)
     skybox = obj.Cube(
-        position=(1, 20, 0),
+        position=(0, 20, 0),
         details=5,
-        scaling=(1, 1, 1),
-        color=(255, 255, 255),
-        side=50,
+        side=20,
         inverted=True
     )
 
@@ -58,7 +56,8 @@ def main():
         inverted=True
     )
     # Список объектов для рендеринга
-    objects = [cube, skybox]
+    objects = [cube,
+               skybox]
 
     # Создаём сцену
     scene = core.Scene(
@@ -74,13 +73,14 @@ def main():
     i = 1
     while True:
         # Обновляем позицию и направление "фонарика"
-        flashlight.position = np.array(player.position.copy())
-        flashlight.direction = player.direction.copy()
+        # flashlight.position = np.array(player.position.copy())
+        # flashlight.direction = player.direction.copy()
 
-        cube.direction = np.array((i, i, i))
+        # cube.direction = np.array((i, i, i))
         i += 1
         # Рендерим кадр
         scene.render()
+        # return
 
 
 if __name__ == "__main__":

@@ -54,10 +54,10 @@ class Light(Object):
             position=position,
             direction=direction,
         )
-        # self.direction: Vector3 = set_ort(np.array(direction, dtype=np.float32))
         self.FOV: float = to_radians(fov)
         # Нормализуем мощность с минимальным порогом
         self.power: float = max(constants.MIN_LIGHT_POWER, power) / LIGHT_POWER_DIVISOR
+
 
     def get_intensity(self, polygon: Triangle) -> float:
         """
