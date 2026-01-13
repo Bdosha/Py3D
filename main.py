@@ -8,6 +8,7 @@ import numpy as np
 
 import core
 import objects as obj
+from core import Vector3
 
 
 def main():
@@ -28,12 +29,12 @@ def main():
     )
 
     # Создаём объекты сцены
-    cube = obj.Cube(
-        position=(0, 10, 0),
-        details=1,
-        side=1,
-        color=(255, 255, 255),
-    )
+    # cube = obj.Cube(
+    #     position=(0, 10, 0),
+    #     details=1,
+    #     side=1,
+    #     color=(255, 255, 255),
+    # )
     cube = obj.Model(model_path="objects/scene.gltf",
         position=(0, 10, 0),
         color=(255, 255, 255))
@@ -75,8 +76,8 @@ def main():
         # Обновляем позицию и направление "фонарика"
         # flashlight.position = np.array(player.position.copy())
         # flashlight.direction = player.direction.copy()
-
-        # cube.direction = np.array((i, i, i))
+        print(cube.direction)
+        cube.direction = [i, i, i]
         i += 1
         # Рендерим кадр
         scene.render()

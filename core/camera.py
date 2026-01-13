@@ -67,7 +67,6 @@ class Camera(Object):
 
         # Храним обратную матрицу
         self._math_cache: None | np.ndarray = None
-        print("@@@@", self._moved)
 
     def set_position(
             self,
@@ -89,9 +88,8 @@ class Camera(Object):
 
         self.FOV = to_radians(180 - fov)
         self.focus = DEFAULT_FOCUS
-        self.position = np.array(position, dtype=np.float32)
-
-        self.direction = set_ort(np.array(direction, dtype=np.float32))
+        self.position = position
+        self.direction = direction
 
         # Вычисляем точку фокуса для проекции
         # view_dot находится перед камерой на расстоянии, зависящем от FOV
@@ -217,7 +215,7 @@ class Camera(Object):
 
         return self.transform_point_to_screen(intersection)
 
-    def to_canvas(self, polygon: Triangle, screen_size: Vector2) -> ScreenCoords | None:
+    def get_canvas_coords(self, polygon: Triangle, screen_size: Vector2) -> ScreenCoords | None:
         """
         Проецирует треугольник на экран.
 

@@ -16,7 +16,7 @@ from .constants import (
     DEFAULT_COLOR,
     EPSILON
 )
-from .utils import to_new_system, swap
+from .utils import to_new_system, swap, set_ort
 
 
 class Object(ABC):
@@ -46,7 +46,7 @@ class Object(ABC):
             position: tuple[float, float, float] = DEFAULT_POSITION,
             direction: tuple[float, float, float] = DEFAULT_ROTATION,
             scaling: tuple[float, float, float] = DEFAULT_SCALING,
-            color: Color = DEFAULT_COLOR,
+            color: tuple[float, float, float] = DEFAULT_COLOR,
             inverted: bool = False
     ) -> None:
         """
@@ -73,7 +73,7 @@ class Object(ABC):
         self._transformed_polygons: list[Polygon] = []
         self._moved: bool = False
 
-        self.color: Color = color
+        self.color: Color = np.array(color)
         self.is_inverted: bool = inverted
 
         self._raw_polygons: list[Polygon] = self._generate_polygons()
@@ -82,11 +82,13 @@ class Object(ABC):
             for poly, color in self._raw_polygons:
                 poly[1], poly[2] = poly[2].copy(), poly[1].copy()
 
-        all_points = np.vstack([i[0] for i in self._raw_polygons])
-        distances = np.linalg.norm(all_points, axis=1)
-        max_idx = np.argmax(distances)
+        self._far_point = 0
+        if self._raw_polygons:
+            all_points = np.vstack([i[0] for i in self._raw_polygons])
+            distances = np.linalg.norm(all_points, axis=1)
+            max_idx = np.argmax(distances)
 
-        self._far_point = all_points[max_idx]
+            self._far_point = all_points[max_idx]
 
     @property
     def max_far_point(self) -> Vector3:
@@ -130,6 +132,7 @@ class Object(ABC):
     @direction.setter
     def direction(self, value: tuple[float, float, float]):
         new = np.array(value, dtype=np.float32)
+        # new = set_ort(new)
         self._moved = not np.array_equal(new, self._direction)
         self._direction: Vector3 = new
 
@@ -138,6 +141,9 @@ class Object(ABC):
         new = np.array(value, dtype=np.float32) + EPSILON
         self._moved = not np.array_equal(new, self._scaling)
         self._scaling: Vector3 = new
+
+    def update_coloring(self, colors: list[Color]):
+        self._transformed_polygons = [(poly[0], colors[i]) for i, poly in enumerate(self._transformed_polygons)]
 
     @abstractmethod
     def _generate_polygons(self) -> list[Polygon]:

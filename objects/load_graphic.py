@@ -44,7 +44,7 @@ def get_colors(poly: NDArray, max_height: float) -> Color:
         RGB кортеж цвета.
     """
     c = get_color(poly, max_height)
-    return (int(c), int(255 - c), int(c))
+    return int(c), int(255 - c), int(c)
 
 
 # =============================================================================
