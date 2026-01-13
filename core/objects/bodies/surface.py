@@ -8,9 +8,9 @@
 import numpy as np
 
 from core.object import Object
-from core.utils import swap
-from core.types import Color, Polygon
-from core.constants import DEFAULT_COLOR, DEFAULT_POSITION, DEFAULT_ROTATION, DEFAULT_SCALING
+from core.tools.utils import swap
+from core.tools.types import Polygon
+from core.tools.constants import DEFAULT_COLOR, DEFAULT_POSITION, DEFAULT_ROTATION, DEFAULT_SCALING
 
 
 class Surface(Object):
@@ -32,7 +32,7 @@ class Surface(Object):
             direction: tuple[float, float, float] = DEFAULT_ROTATION,
             details: int = 1,
             scaling: tuple[float, float, float] = DEFAULT_SCALING,
-            color: Color = DEFAULT_COLOR,
+            color: tuple[float,float,float] = DEFAULT_COLOR,
             double_sided: bool = False,
             inverted: bool = False
     ) -> None:
@@ -50,7 +50,7 @@ class Surface(Object):
             inverted: Если True, инвертирует нормали.
         """
         self.side = side
-        self.details = details
+        self.details = details + 1
         self.double_sided = double_sided
 
         super().__init__(

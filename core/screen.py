@@ -6,13 +6,12 @@
 """
 
 import tkinter as tk
-from typing import Optional
 
 import numpy as np
 
-from .types import Color, ScreenCoords, DrawData
-from .constants import DEFAULT_BG_COLOR, FPS_TEXT_COLOR
-from .utils import to_float
+from core.tools.types import Color, ScreenCoords, DrawData
+from core.tools.constants import DEFAULT_BG_COLOR, FPS_TEXT_COLOR
+from core.tools.utils import to_float
 
 
 class Screen:

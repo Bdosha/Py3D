@@ -7,9 +7,9 @@
 
 import numpy as np
 
-from . import Object, Polygon
-from .types import Vector3, Vector2, Triangle, ScreenCoords
-from .constants import (
+from core import Object, Polygon
+from core.tools.types import Vector3, Vector2, Triangle, ScreenCoords
+from core.tools.constants import (
     DEFAULT_FOV,
     DEFAULT_FOCUS,
     DEFAULT_POSITION,
@@ -17,8 +17,8 @@ from .constants import (
     MATRIX_REGULARIZATION,
     UP_VECTOR
 )
-from . import constants
-from .utils import to_radians, set_ort, get_angle
+from core.tools import constants
+from core.tools.utils import to_radians, set_ort
 
 
 class Camera(Object):
@@ -97,7 +97,10 @@ class Camera(Object):
 
     def is_point_visible(self, point: Vector3) -> bool:
         to_vertex = point - self.position
-        return get_angle(to_vertex, self.direction) <= self.FOV / 2
+        to_vertex_norm = set_ort(to_vertex)
+        dot = np.dot(to_vertex_norm, self.direction)
+        # cos(FOV/2) вместо arccos
+        return dot >= np.cos(self.FOV / 2)
 
     def is_polygon_visible(self, poly: Triangle) -> bool:
         """
@@ -234,6 +237,80 @@ class Camera(Object):
                 return None  # Вершина за камерой - пропускаем весь полигон
             points.append(point + (screen_size / 2))
         return points
+
+    @property
+    def position(self) -> Vector3:
+        """Позиция камеры в мировых координатах."""
+        return self._position
+    
+    @position.setter
+    def position(self, value: tuple[float, float, float] | Vector3):
+        """
+        Устанавливает позицию камеры.
+        
+        При изменении позиции пересчитывается точка фокуса (view_dot)
+        и инвалидируется кэш матриц.
+        
+        Args:
+            value: Новая позиция камеры (x, y, z).
+        """
+        new = np.array(value, dtype=np.float32)
+        self._moved = not np.array_equal(new, self._position)
+        self._position = new
+        
+        # Пересчитываем точку фокуса при изменении позиции
+        if self._moved:
+            # Проверяем, что focus и FOV уже инициализированы
+            if hasattr(self, 'focus') and hasattr(self, 'FOV'):
+                self.view_dot = self.position + self.direction * (self.focus / 2 * np.tan(self.FOV / 2))
+            # Инвалидируем кэш матриц для пересчета
+            self._math_cache = None
+            self.invalidate_lighting_cache()
+    
+    @property
+    def direction(self) -> Vector3:
+        """
+        Направление взгляда камеры (нормализованный вектор).
+        
+        Это не углы Эйлера, а вектор направления в 3D пространстве.
+        """
+        return self._direction
+    
+    @direction.setter
+    def direction(self, value: tuple[float, float, float] | Vector3):
+        """
+        Устанавливает направление взгляда камеры.
+        
+        Вектор автоматически нормализуется. Если вектор нулевой,
+        используется направление по умолчанию. Также пересчитывается
+        точка фокуса и инвалидируется кэш матриц.
+        
+        Args:
+            value: Вектор направления (будет нормализован).
+        """
+        direction_arr = np.array(value, dtype=np.float32)
+        
+        # Защита от нулевого направления
+        length = np.linalg.norm(direction_arr)
+        if length < 1e-6:
+            direction_arr = np.array(DEFAULT_DIRECTION, dtype=np.float32)
+            length = np.linalg.norm(direction_arr)
+        
+        # Нормализуем вектор
+        new = set_ort(direction_arr)
+        
+        # Проверяем, изменилось ли направление
+        self._moved = not np.array_equal(new, self._direction)
+        self._direction = new
+        
+        # Пересчитываем точку фокуса при изменении направления
+        if self._moved:
+            # Проверяем, что focus и FOV уже инициализированы
+            if hasattr(self, 'focus') and hasattr(self, 'FOV'):
+                self.view_dot = self.position + self.direction * (self.focus / 2 * np.tan(self.FOV / 2))
+            # Инвалидируем кэш матриц для пересчета
+            self._math_cache = None
+            self.invalidate_lighting_cache()
 
     def _generate_polygons(self) -> list[Polygon]:
         return []

@@ -5,18 +5,19 @@
 для всех геометрических примитивов и моделей.
 """
 import uuid
+from typing import Optional
 from abc import ABC, abstractmethod
 import numpy as np
 
-from .types import Vector3, Color, Polygon
-from .constants import (
+from core.tools.types import Vector3, Color, Polygon
+from core.tools.constants import (
     DEFAULT_POSITION,
     DEFAULT_ROTATION,
     DEFAULT_SCALING,
     DEFAULT_COLOR,
     EPSILON
 )
-from .utils import to_new_system, swap, set_ort
+from core.tools.utils import to_new_system, swap
 
 
 class Object(ABC):
@@ -27,12 +28,12 @@ class Object(ABC):
     вращения, масштабирования и инверсии объектов.
     
     Attributes:
-        position: Позиция объекта в мировых координатах.
+        position: Позиция объекта в мировых координатах (x, y, z).
+        direction: Углы поворота в градусах (rx, ry, rz) - углы Эйлера.
         scaling: Масштаб объекта по осям X, Y, Z.
         is_inverted: Флаг инверсии нормалей (для внутренних поверхностей).
         color: Базовый цвет объекта.
         polygons: Список полигонов объекта с цветами.
-        Mx, My, Mz: Матрицы поворота вокруг осей X, Y, Z.
     """
 
     _position: Vector3
@@ -73,6 +74,10 @@ class Object(ABC):
         self._transformed_polygons: list[Polygon] = []
         self._moved: bool = False
 
+        # Буфер для освещенных цветов
+        self._lighting_colors: Optional[list[Color]] = None
+        self._lighting_cache_valid: bool = False
+
         self.color: Color = np.array(color)
         self.is_inverted: bool = inverted
 
@@ -91,6 +96,10 @@ class Object(ABC):
             self._far_point = all_points[max_idx]
 
     @property
+    def id(self) -> str:
+        return str(self._id)
+
+    @property
     def max_far_point(self) -> Vector3:
         return self._far_point
 
@@ -100,6 +109,12 @@ class Object(ABC):
 
     @property
     def direction(self) -> Vector3:
+        """
+        Углы поворота объекта в градусах (rx, ry, rz).
+        
+        Это углы Эйлера, которые используются для создания матрицы поворота.
+        Значения в градусах, не в радианах.
+        """
         return self._direction
 
     @property
@@ -128,22 +143,93 @@ class Object(ABC):
         new = np.array(value, dtype=np.float32)
         self._moved = not np.array_equal(new, self._position)
         self._position: Vector3 = new
+        if self._moved:
+            self.invalidate_lighting_cache()
 
     @direction.setter
     def direction(self, value: tuple[float, float, float]):
+        """
+        Устанавливает углы поворота объекта.
+        
+        Args:
+            value: Углы поворота в градусах (rx, ry, rz) - углы Эйлера.
+        """
         new = np.array(value, dtype=np.float32)
-        # new = set_ort(new)
         self._moved = not np.array_equal(new, self._direction)
         self._direction: Vector3 = new
+        if self._moved:
+            self.invalidate_lighting_cache()
 
     @scaling.setter
     def scaling(self, value: tuple[float, float, float]):
         new = np.array(value, dtype=np.float32) + EPSILON
         self._moved = not np.array_equal(new, self._scaling)
         self._scaling: Vector3 = new
+        if self._moved:
+            self.invalidate_lighting_cache()
 
     def update_coloring(self, colors: list[Color]):
+        """
+        Обновляет цвета полигонов.
+        
+        Args:
+            colors: Список цветов для каждого полигона.
+        """
+        if not colors:
+            return
+        
+        if len(colors) != len(self._transformed_polygons):
+            raise ValueError(
+                f"Количество цветов ({len(colors)}) не совпадает с "
+                f"количеством полигонов ({len(self._transformed_polygons)})"
+            )
+        
         self._transformed_polygons = [(poly[0], colors[i]) for i, poly in enumerate(self._transformed_polygons)]
+    
+    def set_lighting_colors(self, colors: list[Color]) -> None:
+        """
+        Устанавливает освещенные цвета для полигонов.
+        
+        Args:
+            colors: Список освещенных цветов для каждого полигона.
+        """
+        if not colors:
+            self._lighting_colors = None
+            self._lighting_cache_valid = False
+            return
+        
+        if len(colors) != len(self.polygons):
+            raise ValueError(
+                f"Количество цветов ({len(colors)}) не совпадает с "
+                f"количеством полигонов ({len(self.polygons)})"
+            )
+        
+        self._lighting_colors = colors
+        self._lighting_cache_valid = True
+    
+    def get_lighted_polygons(self) -> list[Polygon]:
+        """
+        Возвращает полигоны с освещенными цветами.
+        
+        Если освещенные цвета не установлены, возвращает полигоны
+        с базовыми цветами.
+        
+        Returns:
+            Список полигонов с цветами (освещенными или базовыми).
+        """
+        polygons = self.polygons
+        
+        if self._lighting_colors is not None and self._lighting_cache_valid:
+            # Возвращаем полигоны с освещенными цветами
+            return [(poly[0], self._lighting_colors[i]) for i, poly in enumerate(polygons)]
+        else:
+            # Возвращаем полигоны с базовыми цветами
+            return polygons
+    
+    def invalidate_lighting_cache(self) -> None:
+        """Инвалидирует кэш освещения объекта."""
+        self._lighting_cache_valid = False
+        self._lighting_colors = None
 
     @abstractmethod
     def _generate_polygons(self) -> list[Polygon]:

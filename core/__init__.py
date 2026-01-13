@@ -10,15 +10,17 @@
 - Screen: вывод на экран через tkinter
 """
 
-from .types import Vector3, Vector2, Triangle, Color, Polygon
-from .object import Object
-from .camera import Camera
-from .light import Light
+from core.tools.types import Vector3, Vector2, Triangle, Color, Polygon
+from core.object import Object
+from core.objects.camera import Camera
+from core.objects.light import Light
 from .scene import Scene
 from .screen import Screen
-from .player import Player
-from .editor import Editor
-from .constants import *
+from core.objects.player import Player
+from core.tools.editor import Editor
+from core.tools.constants import *
+import core.objects as obj
+from core.app import App
 
 __all__ = [
     'Camera',
@@ -32,4 +34,5 @@ __all__ = [
     'Triangle',
     'Color',
     'Polygon',
+    'App'
 ]

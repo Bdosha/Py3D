@@ -10,10 +10,10 @@ import tkinter as tk
 from typing import Optional, Callable, Any
 import numpy as np
 
-from .object import Object
-from .light import Light
-from .player import Player
-import core.constants as constants_module
+from core.object import Object
+from core.objects.light import Light
+from core.objects.player import Player
+import core.tools.constants as constants_module
 
 # =============================================================================
 # Стили тёмной темы
@@ -310,7 +310,8 @@ class InspectorPanel:
         self._add_title(obj.__class__.__name__, DARK_THEME['accent'])
         self._add_section("Transform")
         self._add_vector3("Position", obj.position, self._on_obj_position, (-100, 100))
-        self._add_vector3("Rotation", [0, 0, 0], self._on_obj_rotation, (-180, 180))
+        # direction в Object - это углы Эйлера в градусах
+        self._add_vector3("Rotation", obj.direction, self._on_obj_rotation, (-180, 180))
         self._add_vector3("Scale", obj.scaling, self._on_obj_scale, (0.1, 10))
 
         self._add_section("Appearance")
@@ -497,67 +498,94 @@ class InspectorPanel:
     # === Object callbacks ===
     def _on_obj_position(self, axis: int, value: float):
         if self.current_item and self.current_type == 'object':
-            self.current_item.position[axis] = value
+            # Используем сеттер для правильного обновления состояния
+            pos = list(self.current_item.position)
+            pos[axis] = value
+            self.current_item.position = tuple(pos)
             self.on_change()
 
     def _on_obj_rotation(self, axis: int, value: float):
         if self.current_item and self.current_type == 'object':
+            # Получаем все значения из слайдеров
             rotation = [self.sliders.get(f"Rotation_{ax}", tk.Scale()).get() for ax in ['X', 'Y', 'Z']]
             self.current_item.direction = tuple(rotation)
             self.on_change()
 
     def _on_obj_scale(self, axis: int, value: float):
         if self.current_item and self.current_type == 'object':
-            self.current_item.scaling[axis] = value
+            # Используем сеттер для правильного обновления состояния
+            scale = list(self.current_item.scaling)
+            scale[axis] = value
+            self.current_item.scaling = tuple(scale)
             self.on_change()
 
     def _on_color_select(self, hex_color: str):
         if self.current_item and self.current_type == 'object' and hasattr(self.current_item, 'color'):
             rgb = hex_to_rgb(hex_color)
-            self.current_item.color = rgb
-            for i, (poly, _) in enumerate(self.current_item.polygons):
-                self.current_item.polygons[i] = (poly, rgb)
+            # Устанавливаем цвет объекта (это обновит базовый цвет)
+            self.current_item.color = np.array(rgb, dtype=np.float32)
+            # Инвалидируем кэш освещения, так как базовый цвет изменился
+            self.current_item.invalidate_lighting_cache()
             self.set_object(self.current_item)  # Refresh palette
             self.on_change()
 
     # === Light callbacks ===
     def _on_light_position(self, axis: int, value: float):
         if self.current_item and self.current_type == 'light':
-            self.current_item.position[axis] = value
+            # Используем сеттер для правильного обновления состояния
+            pos = list(self.current_item.position)
+            pos[axis] = value
+            self.current_item.position = tuple(pos)
             self.on_change()
 
     def _on_light_direction(self, axis: int, value: float):
         if self.current_item and self.current_type == 'light':
-            self.current_item.direction[axis] = value
-            # Нормализуем направление
-            length = np.linalg.norm(self.current_item.direction)
+            # Используем сеттер для правильного обновления состояния
+            direction = list(self.current_item.direction)
+            direction[axis] = value
+            # Нормализуем направление перед установкой
+            direction_arr = np.array(direction)
+            length = np.linalg.norm(direction_arr)
             if length > 0:
-                self.current_item.direction /= length
+                direction_arr = direction_arr / length
+            self.current_item.direction = tuple(direction_arr)
             self.on_change()
 
     def _on_light_fov(self, value: float):
         if self.current_item and self.current_type == 'light':
+            # Обновляем FOV и помечаем свет как перемещенный для пересчета освещения
             self.current_item.FOV = value * np.pi / 180
+            self.current_item.set_moved(True)
             self.on_change()
 
     def _on_light_power(self, value: float):
         if self.current_item and self.current_type == 'light':
+            # Обновляем power и помечаем свет как перемещенный для пересчета освещения
             self.current_item.power = value / 10
+            self.current_item.set_moved(True)
             self.on_change()
 
     # === Camera callbacks ===
     def _on_camera_position(self, axis: int, value: float):
         if self.current_item and self.current_type == 'camera':
-            self.current_item.position[axis] = value
+            # Используем сеттер для правильного обновления состояния
+            pos = list(self.current_item.position)
+            pos[axis] = value
+            self.current_item.position = tuple(pos)
             self.current_item._sync_camera()
             self.on_change()
 
     def _on_camera_direction(self, axis: int, value: float):
         if self.current_item and self.current_type == 'camera':
-            self.current_item.direction[axis] = value
-            length = np.linalg.norm(self.current_item.direction)
+            # Используем сеттер для правильного обновления состояния
+            direction = list(self.current_item.direction)
+            direction[axis] = value
+            # Нормализуем направление перед установкой
+            direction_arr = np.array(direction)
+            length = np.linalg.norm(direction_arr)
             if length > 0:
-                self.current_item.direction /= length
+                direction_arr = direction_arr / length
+            self.current_item.direction = tuple(direction_arr)
             self.current_item._sync_camera()
             self.on_change()
 
