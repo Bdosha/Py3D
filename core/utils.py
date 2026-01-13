@@ -4,11 +4,14 @@
 Содержит функции для работы с векторами, матрицами поворота
 и преобразованиями координат.
 """
-
 import numpy as np
 from numpy.typing import NDArray
 
 from core import Vector3
+
+# _matrix_cache: dict[tuple[float, float, float], tuple[NDArray[float], NDArray[float], NDArray[float]]] = {}
+
+_matrix_cache: dict[tuple[float, float, float], NDArray[float]] = {}
 
 
 def to_radians(degrees: float) -> float:
@@ -35,7 +38,6 @@ def get_len(vector: NDArray) -> float:
         Евклидова длина вектора.
     """
     return np.sqrt(np.sum(vector ** 2))
-
 
 
 def set_len(vector: NDArray, length: float) -> NDArray:
@@ -69,7 +71,8 @@ def set_ort(vector: NDArray) -> NDArray:
     return set_len(vector, 1)
 
 
-def create_matrix(rotate: Vector3) -> tuple[NDArray, NDArray, NDArray]:
+# def create_matrix(rotate: tuple[float, float, float]) -> tuple[NDArray, NDArray, NDArray]:
+def create_matrix(rotate: tuple[float, float, float]) -> NDArray:
     """
     Создаёт матрицы поворота вокруг осей X, Y, Z.
     
@@ -82,7 +85,14 @@ def create_matrix(rotate: Vector3) -> tuple[NDArray, NDArray, NDArray]:
     Returns:
         Кортеж из трёх матриц поворота 3x3 (Mx, My, Mz).
     """
-    rotate_rad = np.radians(rotate)
+    ans = _matrix_cache.get(rotate)
+
+    if ans is not None:
+        return ans
+
+    np_rotate = np.array(rotate)
+
+    rotate_rad = np.radians(np_rotate)
     cos = np.cos(rotate_rad)
     sin = np.sin(rotate_rad)
 
@@ -107,7 +117,8 @@ def create_matrix(rotate: Vector3) -> tuple[NDArray, NDArray, NDArray]:
         [0, 0, 1]
     ], dtype=np.float32)
 
-    return Mx, My, Mz
+    _matrix_cache[rotate] = Mx @ My @ Mz
+    return Mx @ My @ Mz
 
 
 def get_angle(vector1: NDArray, vector2: NDArray) -> float:
@@ -128,8 +139,8 @@ def get_angle(vector1: NDArray, vector2: NDArray) -> float:
 
 
 def to_new_system(
-        direction: Vector3,
         vertices: NDArray,
+        direction: tuple | Vector3,
         position: NDArray = np.array([0, 0, 0]),
 ) -> NDArray:
     """
@@ -147,8 +158,10 @@ def to_new_system(
     Returns:
         Массив преобразованных вершин.
     """
-    Mx, My, Mz = create_matrix(direction)
-    return vertices @ Mx @ My @ Mz + position
+    simple_direction = (float(direction[0]), float(direction[1]), float(direction[2]))
+
+    M = create_matrix(simple_direction)
+    return vertices @ M + position
 
 
 def swap(poly: NDArray) -> NDArray:

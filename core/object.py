@@ -4,11 +4,11 @@
 Определяет абстрактный интерфейс и общую логику трансформаций
 для всех геометрических примитивов и моделей.
 """
-
+import uuid
 from abc import ABC, abstractmethod
 import numpy as np
 
-from .types import Vector3, Color, Polygon, VisibilityCheck
+from .types import Vector3, Color, Polygon
 from .constants import (
     DEFAULT_POSITION,
     DEFAULT_ROTATION,
@@ -35,6 +35,12 @@ class Object(ABC):
         Mx, My, Mz: Матрицы поворота вокруг осей X, Y, Z.
     """
 
+    _position: Vector3
+    _direction: Vector3
+    _scaling: Vector3
+
+    is_inverted: bool
+
     def __init__(
             self,
             position: tuple[float, float, float] = DEFAULT_POSITION,
@@ -53,16 +59,85 @@ class Object(ABC):
             color: RGB цвет объекта (r, g, b), значения 0-255.
             inverted: Если True, нормали полигонов направлены внутрь.
         """
-        self.position: Vector3 = np.array(position, dtype=np.float32)
-        self.direction: Vector3 = np.array(direction, dtype=np.float32)
 
-        # self.Mx, self.My, self.Mz = create_matrix(direction)
+        self._id = uuid.uuid4()
 
-        self.scaling: Vector3 = np.array(scaling, dtype=np.float32) + EPSILON
+        self._position = DEFAULT_POSITION
+        self._direction = DEFAULT_ROTATION
+        self._scaling = DEFAULT_SCALING
+
+        self.position = position
+        self.direction = direction
+        self.scaling = scaling
+
+        self._transformed_polygons: list[Polygon] = []
+        self._moved: bool = False
 
         self.color: Color = color
         self.is_inverted: bool = inverted
-        self.polygons: list[Polygon] = self._apply_polygons()
+
+        self._raw_polygons: list[Polygon] = self._generate_polygons()
+
+        if self.is_inverted:
+            for poly, color in self._raw_polygons:
+                poly[1], poly[2] = poly[2].copy(), poly[1].copy()
+
+        all_points = np.vstack([i[0] for i in self._raw_polygons])
+        distances = np.linalg.norm(all_points, axis=1)
+        max_idx = np.argmax(distances)
+
+        self._far_point = all_points[max_idx]
+
+    @property
+    def max_far_point(self) -> Vector3:
+        return self._far_point
+
+    @property
+    def position(self) -> Vector3:
+        return self._position
+
+    @property
+    def direction(self) -> Vector3:
+        return self._direction
+
+    @property
+    def scaling(self) -> Vector3:
+        return self._scaling
+
+    @property
+    def is_moved(self) -> bool:
+        return self._moved
+
+    @property
+    def polygons(self) -> list[Polygon]:
+        if self._moved or not self._transformed_polygons:
+            self._transformed_polygons: list[Polygon] = []
+            for poly, color in self._raw_polygons:
+                self._transformed_polygons.append((to_new_system(
+                    poly * self.scaling,
+                    self.direction,
+                    self.position), color))
+            self._moved = False
+
+        return self._transformed_polygons
+
+    @position.setter
+    def position(self, value: tuple[float, float, float]):
+        new = np.array(value, dtype=np.float32)
+        self._moved = not np.array_equal(new, self._position)
+        self._position: Vector3 = new
+
+    @direction.setter
+    def direction(self, value: tuple[float, float, float]):
+        new = np.array(value, dtype=np.float32)
+        self._moved = not np.array_equal(new, self._direction)
+        self._direction: Vector3 = new
+
+    @scaling.setter
+    def scaling(self, value: tuple[float, float, float]):
+        new = np.array(value, dtype=np.float32) + EPSILON
+        self._moved = not np.array_equal(new, self._scaling)
+        self._scaling: Vector3 = new
 
     @abstractmethod
     def _generate_polygons(self) -> list[Polygon]:
@@ -86,34 +161,3 @@ class Object(ABC):
         for poly, color in polygons:
             inverted_polys.append((swap(poly), color))
         return inverted_polys
-
-    def _apply_polygons(self):
-        temp_polygons = self._generate_polygons()
-        if self.is_inverted:
-            temp_polygons = Object._apply_inversion(temp_polygons)
-
-        return temp_polygons
-
-    def get_visible_polys(self, visibility_check: VisibilityCheck) -> list[Polygon]:
-        """
-        Возвращает список видимых полигонов.
-        
-        Фильтрует полигоны по функции проверки видимости
-        (frustum culling, backface culling).
-        
-        Args:
-            visibility_check: Функция проверки видимости полигона.
-            
-        Returns:
-            Список видимых полигонов с цветами.
-        """
-        visible = []
-        for poly, color in self.polygons:
-
-            transformed = to_new_system(self.direction,
-                                        poly * self.scaling,
-                                        self.position)
-
-            if visibility_check(transformed):
-                visible.append((transformed, color))
-        return visible

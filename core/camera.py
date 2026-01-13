@@ -35,6 +35,11 @@ class Camera(Object):
         focus: Фокусное расстояние.
         view_dot: Точка фокуса для проекции.
     """
+    position: Vector3
+    direction: Vector3
+    FOV: float
+    focus: float
+    view_dot: Vector3
 
     def __init__(
             self,
@@ -60,6 +65,10 @@ class Camera(Object):
 
         self.set_position(position, direction, fov)
 
+        # Храним обратную матрицу
+        self._math_cache: None | np.ndarray = None
+        print("@@@@", self._moved)
+
     def set_position(
             self,
             position: tuple[float, float, float] = DEFAULT_POSITION,
@@ -81,13 +90,18 @@ class Camera(Object):
         self.FOV = to_radians(180 - fov)
         self.focus = DEFAULT_FOCUS
         self.position = np.array(position, dtype=np.float32)
+
         self.direction = set_ort(np.array(direction, dtype=np.float32))
 
         # Вычисляем точку фокуса для проекции
         # view_dot находится перед камерой на расстоянии, зависящем от FOV
         self.view_dot = self.position + self.direction * (self.focus / 2 * np.tan(self.FOV / 2))
 
-    def is_visible(self, poly: Triangle) -> bool:
+    def is_point_visible(self, point: Vector3) -> bool:
+        to_vertex = point - self.position
+        return get_angle(to_vertex, self.direction) <= self.FOV / 2
+
+    def is_polygon_visible(self, poly: Triangle) -> bool:
         """
         Проверяет видимость полигона.
         
@@ -116,11 +130,9 @@ class Camera(Object):
 
         # Frustum culling: проверяем каждую вершину
         # Полигон видим, если хотя бы одна вершина в поле зрения
-        half_fov = self.FOV / 2
 
         for vertex in [a, b, c]:
-            to_vertex = vertex - self.position
-            if get_angle(to_vertex, self.direction) <= half_fov:
+            if self.is_point_visible(vertex):
                 return True
 
         return False
@@ -138,33 +150,38 @@ class Camera(Object):
         Returns:
             2D координаты на экране (относительно центра).
         """
-        # Строим базис камеры
-        # a - вектор вправо (перпендикулярен direction и UP)
-        a = np.cross(self.direction, np.array(UP_VECTOR))
-        # b - вектор вверх камеры (перпендикулярен a и direction)
-        b = np.cross(a, self.direction)
+        if not self._moved and self._math_cache is not None:
+            M_inv = self._math_cache
+        else:
+            # Строим базис камеры
+            # a - вектор вправо (перпендикулярен direction и UP)
+            a = np.cross(self.direction, np.array(UP_VECTOR))
+            # b - вектор вверх камеры (перпендикулярен a и direction)
+            b = np.cross(a, self.direction)
 
-        # Матрица преобразования из мировых координат в координаты камеры
-        M = np.array([a, b, self.direction]).T
-        P = self.view_dot.T
+            # Матрица преобразования из мировых координат в координаты камеры
+            M = np.array([a, b, self.direction]).T
 
-        # Инвертируем матрицу (с регуляризацией для вырожденных случаев)
-        try:
-            M_inv = np.linalg.inv(M)
-        except np.linalg.LinAlgError:
-            M_inv = np.linalg.inv(M + MATRIX_REGULARIZATION)
+            # Инвертируем матрицу (с регуляризацией для вырожденных случаев)
+            try:
+                M_inv = np.linalg.inv(M)
+            except np.linalg.LinAlgError:
+                M_inv = np.linalg.inv(M + MATRIX_REGULARIZATION)
+
+            self._math_cache = M_inv
+            self._moved = False
 
         # Преобразуем точку и масштабируем
-        result = (M_inv @ (point.T - P.T))[:2] * (constants.PROJECTION_SCALE / self.focus)
+        result = (M_inv @ (point.T - self.view_dot))[:2] * (constants.PROJECTION_SCALE / self.focus)
         result[1] *= -1  # Инвертируем Y (экранные координаты растут вниз)
         return result
 
-    def project_point(self, world_point: Vector3) -> Vector2 | None:
+    def project_point(self, world_point: Vector3) -> None | Vector2:
         """
         Проецирует 3D точку на экран с учётом размера экрана.
-        
+
         Вычисляет пересечение луча камера->точка с плоскостью проекции.
-        
+
         Args:
             world_point: 3D точка в мировых координатах.
 
@@ -203,11 +220,11 @@ class Camera(Object):
     def to_canvas(self, polygon: Triangle, screen_size: Vector2) -> ScreenCoords | None:
         """
         Проецирует треугольник на экран.
-        
+
         Args:
             polygon: Треугольник (массив 3x3 вершин).
             screen_size: Размер экрана (ширина, высота).
-            
+
         Returns:
             Список из 3 точек в экранных координатах,
             или None если хотя бы одна вершина за камерой.
