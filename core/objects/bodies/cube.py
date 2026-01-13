@@ -8,9 +8,9 @@
 import numpy as np
 
 from core.object import Object
-from core.utils import swap, to_new_system
-from core.types import Polygon
-from core.constants import DEFAULT_COLOR, DEFAULT_POSITION, DEFAULT_ROTATION, DEFAULT_SCALING
+from core.tools.utils import swap, to_new_system
+from core.tools.types import Polygon
+from core.tools.constants import DEFAULT_COLOR, DEFAULT_POSITION, DEFAULT_ROTATION, DEFAULT_SCALING
 
 
 class Cube(Object):

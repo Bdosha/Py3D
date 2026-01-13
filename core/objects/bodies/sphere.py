@@ -8,8 +8,8 @@
 import numpy as np
 
 from core.object import Object
-from core.types import Color, Polygon
-from core.constants import (
+from core.tools.types import Color, Polygon
+from core.tools.constants import (
     DEFAULT_COLOR,
     DEFAULT_POSITION,
     DEFAULT_ROTATION,

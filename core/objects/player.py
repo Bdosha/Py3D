@@ -8,16 +8,17 @@
 import numpy as np
 from typing import Any
 
-from .camera import Camera
-from .types import Vector2
-from .constants import (
+from core.objects.camera import Camera
+from core.tools.types import Vector2, Vector3
+from core.tools.constants import (
     DEFAULT_FOV,
     DEFAULT_POSITION,
     DEFAULT_DIRECTION,
     UP_VECTOR
 )
-from . import constants, Object, Polygon
-from .utils import set_ort, get_len
+from core import Object, Polygon
+from core.tools import constants
+from core.tools.utils import set_ort, get_len
 
 
 class Player(Object):
@@ -62,7 +63,7 @@ class Player(Object):
         self.camera = Camera(position, direction, fov)
 
         # Для отслеживания движения мыши
-        self._last_cursor: Vector2 = np.array([0.0, 0.0])
+        self._last_cursor: None | Vector2 = None
         self._screen: Vector2 = np.array([800.0, 600.0])  # Размер по умолчанию
 
     @property
@@ -144,7 +145,7 @@ class Player(Object):
         cursor[1] *= -1  # Инвертируем Y
 
         # event.state == 0 означает просто движение без нажатия кнопки
-        if event.state == 0:
+        if event.state == 0 or self._last_cursor is None:
             self._last_cursor = cursor
             return
 
@@ -174,7 +175,7 @@ class Player(Object):
         # Применяем поворот
         self.direction += rotation
         self.direction = set_ort(self.direction)
-        
+
         # Ограничиваем вертикальный угол (pitch) чтобы избежать gimbal lock
         # Не даём смотреть ровно вверх или вниз (максимум ~85 градусов)
         max_pitch = 0.95  # cos(~18°) от горизонта, т.е. ~72° от вертикали
@@ -185,11 +186,51 @@ class Player(Object):
 
         self._sync_camera()
 
+    @property
+    def direction(self) -> Vector3:
+        """
+        Направление взгляда игрока (нормализованный вектор).
+        
+        Это не углы Эйлера, а вектор направления в 3D пространстве.
+        """
+        return self._direction
+
+    @direction.setter
+    def direction(self, value: tuple[float, float, float] | Vector3):
+        """
+        Устанавливает направление взгляда игрока.
+        
+        Вектор автоматически нормализуется. Если вектор нулевой,
+        используется направление по умолчанию. Также синхронизируется
+        камера.
+        
+        Args:
+            value: Вектор направления (будет нормализован).
+        """
+        direction_arr = np.array(value, dtype=np.float32)
+
+        # Защита от нулевого направления
+        length = get_len(direction_arr)
+        if length < 1e-6:
+            direction_arr = np.array(DEFAULT_DIRECTION, dtype=np.float32)
+            length = get_len(direction_arr)
+
+        # Нормализуем вектор
+        new = set_ort(direction_arr)
+
+        # Проверяем, изменилось ли направление
+        self._moved = not np.array_equal(new, self._direction)
+        self._direction = new
+
+        # Синхронизируем камеру при изменении направления (если она уже создана)
+        if self._moved:
+            if hasattr(self, 'camera'):
+                self._sync_camera()
+            self.invalidate_lighting_cache()
+
     def _sync_camera(self) -> None:
         """Синхронизирует камеру с позицией и направлением игрока."""
         self.camera.set_position(self.position, self.direction, self.FOV)
 
     def _generate_polygons(self) -> list[Polygon]:
         return []
-    # Алиас для обратной совместимости
-    go = move

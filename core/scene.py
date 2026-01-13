@@ -7,16 +7,17 @@
 
 import time
 import tkinter as tk
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 
-from .player import Player
+from core.objects.player import Player
 from .screen import Screen
-from .light import Light
-from .object import Object
-from .editor import Editor
-from .types import Polygon, DrawData
+from core.objects.light import Light
+from core.object import Object
+from core.tools.editor import Editor
+from core.objects.lighting import LightingSystem
+from core.tools.types import Polygon, DrawData
 
 
 class Scene:
@@ -40,13 +41,15 @@ class Scene:
 
     def __init__(
             self,
-            player: Player,
-            screen_size: tuple[int, int],
+            player: Player = Player(),
+            screen_size: tuple[int, int] = (800, 600),
             objects: list[Object] = None,
             lights: list[Light] = None,
-            show_fps: bool = False,
-            show_axes: bool = False,
-            fullscreen: bool = False
+            render_script: Callable = None,
+            show_fps: bool = True,
+            show_axes: bool = True,
+            fullscreen: bool = False,
+            bg_color: str = "black",
     ) -> None:
         """
         Создаёт сцену.
@@ -70,15 +73,19 @@ class Scene:
         # Инициализация игрока
         self.player = player
         self.player.screen = np.array([screen_size[0], screen_size[1]])
-        self.player.last = self.player.screen / 2
 
         # Компоненты сцены
         self.objects = objects if objects is not None else []
         self.lights = list(lights) if lights is not None else []
 
+        # Система освещения
+        self.lighting_system = LightingSystem()
+
         # Экран
-        self.screen = Screen(self.root, screen_size[0], screen_size[1])
+        self.screen = Screen(self.root, screen_size[0], screen_size[1], bg_color=bg_color)
         self._default_screen_size = screen_size
+
+        self.render_script = render_script
 
         # Настройки отображения
         self.show_fps = show_fps
@@ -98,6 +105,16 @@ class Scene:
 
         # Полноэкранный режим
         self.root.attributes("-fullscreen", fullscreen)
+
+        self._attributes_hash: dict[str, Object] = {}
+
+    def _update_attributes(self):
+        self._attributes_hash: dict[str, Object] = {}
+        for light in self.lights:
+            self._attributes_hash[light.id] = light
+        for obj in self.objects:
+            self._attributes_hash[obj.id] = obj
+
 
     def _bind_controls(self) -> None:
         """Привязывает обработчики клавиш и мыши."""
@@ -198,7 +215,7 @@ class Scene:
         """
         if not polygons:
             return polygons
-        
+
         # Векторизованное вычисление центров и расстояний
         centers = np.array([np.mean(poly, axis=0) for poly, _ in polygons])
         distances = np.linalg.norm(centers - self.player.position, axis=1)
@@ -208,41 +225,25 @@ class Scene:
 
         return [polygons[i] for i in sorted_indices]
 
-    def add_object(self, obj: Object) -> None:
+    def _compute_lighting(self, obj: Object) -> None:
         """
-        Добавляет объект на сцену.
+        Вычисляет освещение для объекта используя LightingSystem.
+        
+        Обновляет освещенные цвета объекта через кэширование.
         
         Args:
-            obj: 3D объект для добавления.
+            obj: 3D объект для освещения.
         """
-        self.objects.append(obj)
-        self.editor.update_objects(self.objects)
+        if not self.lights:
+            # Если нет источников света, инвалидируем кэш
+            obj.invalidate_lighting_cache()
+            return
 
-    def remove_object(self, index: int) -> None:
-        """
-        Удаляет объект со сцены.
-        
-        Args:
-            index: Индекс объекта в списке.
-        """
-        if 0 <= index < len(self.objects):
-            self.objects.pop(index)
-            self.editor.update_objects(self.objects)
+        # Вычисляем освещенные цвета через систему освещения
+        lighting_colors = self.lighting_system.compute_lighting(obj, self.lights)
 
-    def _compute_lighting(self, obj: Object) -> Object:
-        lights_moved = False
-        for light in self.lights:
-            if light.is_moved:
-                lights_moved = True
-                break
-        if lights_moved or obj.is_moved:
-            new_colors = []
-            for i, poly in enumerate(obj.polygons):
-                mean_color = np.array([light.get_light_color(poly) for light in self.lights]).mean(axis=0)
-                new_colors.append(mean_color)
-            obj.update_coloring(new_colors)
-
-        return obj
+        # Устанавливаем освещенные цвета в объект
+        obj.set_lighting_colors(lighting_colors)
 
     def render(self) -> None:
         """
@@ -257,19 +258,31 @@ class Scene:
         """
         self._frame_start = time.time()
 
+        self._update_attributes()
+
+        if self.render_script:
+            self.render_script()
+
         # Обновляем окно tkinter
         self.root.update()
 
-        # Собираем видимые полигоны от всех объектов
+        # Вычисляем освещение для всех объектов
+        for obj in self.objects:
+            self._compute_lighting(obj)
+
+        # Собираем видимые полигоны от всех объектов (с освещенными цветами)
         visible_polys: list[Polygon] = []
 
-        for i, obj in enumerate(self.objects):
-            self.objects[i] = self._compute_lighting(obj)
+        for obj in self.objects:
+            # Используем get_lighted_polygons() для получения полигонов с освещенными цветами
+            lighted_polygons = obj.get_lighted_polygons()
 
             # Фильтруем видимые полигоны
-            for poly in obj.polygons:
+            for poly in lighted_polygons:
                 if self.player.camera.is_polygon_visible(poly[0]):
                     visible_polys.append(poly)
+
+        # Сбрасываем флаги движения источников света
         for light in self.lights:
             light.set_moved(False)
 

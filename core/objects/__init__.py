@@ -5,11 +5,11 @@
 и загрузчики моделей.
 """
 
-from .cube import Cube
-from .graphics import Graphic, ParametricSurface, Lab  # Lab - алиас для совместимости
-from .model import Model
-from .sphere import Sphere
-from .surface import Surface
+from core.objects.bodies.cube import Cube
+from core.objects.bodies.graphics import Graphic, ParametricSurface, Lab  # Lab - алиас для совместимости
+from core.objects.bodies.model import Model
+from core.objects.bodies.sphere import Sphere
+from core.objects.bodies.surface import Surface
 
 __all__ = [
     'Cube',

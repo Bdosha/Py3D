@@ -9,9 +9,9 @@ import numpy as np
 import trimesh
 
 from core.object import Object
-from core.utils import swap
-from core.types import Color, Polygon
-from core.constants import DEFAULT_POSITION, DEFAULT_ROTATION, DEFAULT_SCALING, DEFAULT_COLOR
+from core.tools.utils import swap
+from core.tools.types import Polygon
+from core.tools.constants import DEFAULT_POSITION, DEFAULT_ROTATION, DEFAULT_SCALING, DEFAULT_COLOR
 
 
 def load_polygons_from_gltf(file_path: str) -> list[np.ndarray]:

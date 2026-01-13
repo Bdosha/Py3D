@@ -10,8 +10,8 @@ from typing import Callable
 import numpy as np
 from numpy.typing import NDArray
 
-from core.utils import mean
-from core.types import Color, Polygon
+from core.tools.utils import mean
+from core.tools.types import Color, Polygon
 
 
 def get_color(poly: NDArray, max_height: float) -> float:
