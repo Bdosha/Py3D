@@ -8,7 +8,7 @@
 import numpy as np
 
 from . import Object
-from .types import Triangle, Polygon
+from .types import Triangle, Polygon, Color
 from .constants import (
     DEFAULT_POSITION,
     DEFAULT_DIRECTION,
@@ -57,9 +57,10 @@ class Light(Object):
         self.FOV: float = to_radians(fov)
         # Нормализуем мощность с минимальным порогом
         self.power: float = max(constants.MIN_LIGHT_POWER, power) / LIGHT_POWER_DIVISOR
+        self._moved = True
 
 
-    def get_intensity(self, polygon: Triangle) -> float:
+    def get_light_color(self, polygon: Polygon) -> Color:
         """
         Вычисляет интенсивность освещения для полигона.
         
@@ -74,7 +75,7 @@ class Light(Object):
         Returns:
             Интенсивность освещения в диапазоне [0, 1].
         """
-        a, b, c = polygon
+        a, b, c = polygon[0]
         center = (a + b + c) / 3
 
         # Нормаль полигона
@@ -97,7 +98,12 @@ class Light(Object):
         falloff = (self.power * constants.LIGHT_FALLOFF_MULTIPLIER) / distance
 
         # Итоговая интенсивность (не меньше 0)
-        return max(0.0, intensity * falloff)
+        return max(0.0, intensity * falloff) * self.color * polygon[1] / 255.0
+
+    # def render_scene_lightning(self, objects:list[Object]) -> np.ndarray:
+
+    def set_moved(self, moved: bool) -> None:
+        self._moved = moved
 
     def _generate_polygons(self) -> list[Polygon]:
         return []

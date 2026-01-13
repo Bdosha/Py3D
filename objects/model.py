@@ -82,7 +82,7 @@ class Model(Object):
             position: tuple[float, float, float] = DEFAULT_POSITION,
             direction: tuple[float, float, float] = DEFAULT_ROTATION,
             scaling: tuple[float, float, float] = DEFAULT_SCALING,
-            color: Color = DEFAULT_COLOR,
+            color: tuple[float, float, float] = DEFAULT_COLOR,
             inverted: bool = False
     ) -> None:
         """

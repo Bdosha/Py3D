@@ -9,7 +9,7 @@ import numpy as np
 
 from core.object import Object
 from core.utils import swap, to_new_system
-from core.types import Color, Polygon
+from core.types import Polygon
 from core.constants import DEFAULT_COLOR, DEFAULT_POSITION, DEFAULT_ROTATION, DEFAULT_SCALING
 
 
@@ -29,7 +29,7 @@ class Cube(Object):
             direction: tuple[float, float, float] = DEFAULT_ROTATION,
             details: int = 1,
             scaling: tuple[float, float, float] = DEFAULT_SCALING,
-            color: Color = DEFAULT_COLOR,
+            color: tuple[float, float, float] = DEFAULT_COLOR,
             inverted: bool = False
     ) -> None:
         """
@@ -54,8 +54,6 @@ class Cube(Object):
             color=color,
             inverted=inverted
         )
-
-
 
     def _generate_polygons(self) -> list[Polygon]:
         """

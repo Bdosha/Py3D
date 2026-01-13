@@ -196,35 +196,17 @@ class Scene:
         Returns:
             Отсортированный список (от дальних к ближним).
         """
-        # Вычисляем расстояния до центров полигонов
-        distances = [
-            np.linalg.norm(np.mean(poly, axis=0) - self.player.position)
-            for poly, _ in polygons
-        ]
+        if not polygons:
+            return polygons
+        
+        # Векторизованное вычисление центров и расстояний
+        centers = np.array([np.mean(poly, axis=0) for poly, _ in polygons])
+        distances = np.linalg.norm(centers - self.player.position, axis=1)
 
         # Сортируем по убыванию расстояния (дальние первые)
         sorted_indices = np.argsort(distances)[::-1]
 
         return [polygons[i] for i in sorted_indices]
-
-    def _compute_lighting(self, poly: np.ndarray) -> float | None:
-        """
-        Вычисляет освещённость полигона от всех источников.
-        
-        Args:
-            poly: Треугольник в мировых координатах.
-            
-        Returns:
-            Суммарная интенсивность освещения [0, 1].
-        """
-        if not self.lights:
-            return None
-
-        total_intensity = 0.0
-        for light in self.lights:
-            total_intensity += light.get_intensity(poly)
-
-        return min(1.0, total_intensity)
 
     def add_object(self, obj: Object) -> None:
         """
@@ -247,6 +229,21 @@ class Scene:
             self.objects.pop(index)
             self.editor.update_objects(self.objects)
 
+    def _compute_lighting(self, obj: Object) -> Object:
+        lights_moved = False
+        for light in self.lights:
+            if light.is_moved:
+                lights_moved = True
+                break
+        if lights_moved or obj.is_moved:
+            new_colors = []
+            for i, poly in enumerate(obj.polygons):
+                mean_color = np.array([light.get_light_color(poly) for light in self.lights]).mean(axis=0)
+                new_colors.append(mean_color)
+            obj.update_coloring(new_colors)
+
+        return obj
+
     def render(self) -> None:
         """
         Отрисовывает один кадр сцены.
@@ -266,13 +263,15 @@ class Scene:
         # Собираем видимые полигоны от всех объектов
         visible_polys: list[Polygon] = []
 
-        for obj in self.objects:
-            visible_polys += [
-                poly
-                for poly in obj.polygons
-                if self.player.camera.is_visible(poly[0])
-            ]
+        for i, obj in enumerate(self.objects):
+            self.objects[i] = self._compute_lighting(obj)
 
+            # Фильтруем видимые полигоны
+            for poly in obj.polygons:
+                if self.player.camera.is_polygon_visible(poly[0]):
+                    visible_polys.append(poly)
+        for light in self.lights:
+            light.set_moved(False)
 
         # Сортируем по глубине (painter's algorithm)
         visible_polys: list[Polygon] = self._sort_by_distance(visible_polys)
@@ -280,13 +279,9 @@ class Scene:
         # Подготавливаем данные для отрисовки
         draw_data: list[DrawData] = []
         for poly, color in visible_polys:
-            # Проецируем на экран
-            screen_coords = self.player.camera.to_canvas(poly, self.screen.screen)
-
-            # Вычисляем освещение
-            intensity = self._compute_lighting(poly)
-
-            draw_data.append([screen_coords, color, intensity])
+            screen_coords = self.player.camera.get_canvas_coords(poly, self.screen.screen)
+            if screen_coords is not None:
+                draw_data.append((screen_coords, color))
 
         # Отрисовываем
         self.screen.multi_draw(draw_data)

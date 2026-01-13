@@ -58,8 +58,7 @@ class Screen:
     def draw_polygon(
         self,
         poly: ScreenCoords,
-        base_color: Color,
-        intensity: Optional[float]
+        base_color: Color
     ) -> None:
         """
         Отрисовывает один полигон с освещением.
@@ -67,21 +66,13 @@ class Screen:
         Args:
             poly: Экранные координаты вершин.
             base_color: Базовый RGB цвет.
-            intensity: Интенсивность освещения (0-1), None = без освещения.
         """
-        # Если интенсивность не задана, используем полную яркость
-        if intensity is None:
-            intensity = 1.0 - 1e-10  # Чуть меньше 1 для корректного округления
+        r = min(255, max(0, int(base_color[0])))
+        g = min(255, max(0, int(base_color[1])))
+        b = min(255, max(0, int(base_color[2])))
         
-        # Применяем освещение к цвету
-        r = int(base_color[0] * intensity)
-        g = int(base_color[1] * intensity)
-        b = int(base_color[2] * intensity)
-        
-        # Преобразуем в hex
         color_hex = f'#{r:02x}{g:02x}{b:02x}'
         
-        # Отрисовываем
         self.canvas.create_polygon(
             to_float(poly),
             outline=color_hex,
@@ -212,14 +203,10 @@ class Screen:
         
         Args:
             polygons: Список данных для отрисовки.
-                      Каждый элемент: [coords, color, intensity].
+                      Каждый элемент: (coords, color).
         """
         self.clear()
         
-        for poly_data in polygons:
-            coords, color, intensity = poly_data
-            
-            if coords is None:
-                continue
-            
-            self.draw_polygon(coords, color, intensity)
+        for coords, color in polygons:
+            if coords is not None:
+                self.draw_polygon(coords, color)
