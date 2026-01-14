@@ -34,5 +34,6 @@ __all__ = [
     'Triangle',
     'Color',
     'Polygon',
-    'App'
+    'App',
+    'Editor',
 ]

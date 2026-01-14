@@ -30,6 +30,5 @@ class BottleScript(RenderScript):
 def model_demo():
     """Точка входа в приложение."""
     return App(
-        core.Scene(),
-        BottleScript()
+        render_script=BottleScript(),
     )

@@ -3,7 +3,7 @@ from core import obj
 import numpy as np
 import time
 
-from core.app import RenderScript, App
+from core.app import RenderScript, App, Settings
 
 
 class RollingScript(RenderScript):
@@ -67,13 +67,14 @@ class RollingScript(RenderScript):
 def colored_lighting():
     """Точка входа в приложение."""
     # Создаём сцену
-    scene = core.Scene(
-        core.Player(
+
+    return App(
+        player=core.Player(
             position=(0, -14, 0),
             direction=(0, 1, 0)
-        )
-    )
-    return App(scene, RollingScript())
+        ),
+        settings=Settings(bg_color='aqua'),
+        render_script=RollingScript())
 
 
 if __name__ == "__main__":
