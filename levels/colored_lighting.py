@@ -8,7 +8,7 @@ from core.app import RenderScript, App, Settings
 
 class RollingScript(RenderScript):
     def __init__(self,
-                 radius=2.0,
+                 radius=1.0,
                  center_y=0.0,
                  rotation_speed=0.6
                  ):
@@ -22,16 +22,17 @@ class RollingScript(RenderScript):
         self.ground = None
 
     def init(self, scene: core.Scene):
-        self.rgb_lights = [core.Light(color=(255, 0, 0)),
-                           core.Light(color=(0, 255, 0)),
-                           core.Light(color=(0, 0, 255)),
-                           ]
+        self.rgb_lights = [
+            core.SpotLight(color=(255, 0, 0)),
+            core.SpotLight(color=(0, 255, 0)),
+            core.SpotLight(color=(0, 0, 255)),
+        ]
 
         for light in self.rgb_lights:
             scene.lights.append(light)
 
         self.ground = obj.Surface(
-            position=(0, 1.5, 0),
+            position=(0, 7, 0),
             details=9,
             direction=(90, 0, 0),
             side=10,

@@ -6,12 +6,12 @@ import numpy as np
 from pydantic import BaseModel
 import tkinter as tk
 
-from core import Scene, Player, Object, Light, Screen, Editor
+from core import Scene, Player, Object, BaseLight, Screen, Editor
 
 
 class Settings(BaseModel):
     window_title: str = "Py3D Engine"
-    bg_color: str = "black"
+    bg_color: str = "aqua"
     screen_size: tuple[int, int] = (800, 600)
     show_fps: bool = True
     show_axes: bool = True
@@ -43,8 +43,7 @@ class App:
     def __init__(self,
                  player: Player = Player(),
                  objects: list[Object] = None,
-                 lights: list[Light] = None,
-                 # scene: Scene,
+                 lights: list[BaseLight] = None,
                  render_script: RenderScript = None,
                  settings: Settings = None
                  ):
@@ -74,11 +73,12 @@ class App:
 
         self._frame_start = time.time()
 
+        # Создаём редактор с объектами из сцены (изначально могут быть пустыми)
         self.editor = Editor(
             root=self.root,
-            objects=objects,
+            objects=self.scene.objects,
             canvas=self.screen.canvas,
-            lights=lights,
+            lights=self.scene.lights,
             player=self.player
         )
         self._editor_mode = False
@@ -88,6 +88,9 @@ class App:
         self._bind_controls()
         if render_script:
             self.render_script.init(self.scene)
+            # Обновляем редактор после инициализации скрипта, так как объекты могли быть добавлены
+            self.editor.update_objects(self.scene.objects)
+            self.editor.set_lights(self.scene.lights)
 
     def _handle_mouse(self, event: Any) -> None:
         """Обрабатывает движение мыши (только если редактор не активен)."""
@@ -149,10 +152,13 @@ class App:
 
         # Пересоздаём canvas с новым размером
         self.screen.canvas.destroy()
-        self.screen = Screen(self.root, new_size[0], new_size[1])
+        self.screen = Screen(self.root, new_size[0], new_size[1], bg_color=self.settings.bg_color)
+        # Обновляем ссылку на screen в сцене
+        self.scene.screen = self.screen
         self.editor.set_canvas(self.screen.canvas)
         self.editor.set_lights(self.scene.lights)
         self.editor.set_player(self.player)
+        self.editor.update_objects(self.scene.objects)
 
     def _bind_controls(self) -> None:
         """Привязывает обработчики клавиш и мыши."""

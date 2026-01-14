@@ -15,7 +15,7 @@ class BottleScript(RenderScript):
             color=(255, 255, 255)
         )
         scene.lights.append(
-            core.Light(
+            core.SpotLight(
                 fov=20,
             )
         )

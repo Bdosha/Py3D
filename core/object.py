@@ -31,7 +31,7 @@ class Object(ABC):
         position: Позиция объекта в мировых координатах (x, y, z).
         direction: Углы поворота в градусах (rx, ry, rz) - углы Эйлера.
         scaling: Масштаб объекта по осям X, Y, Z.
-        is_inverted: Флаг инверсии нормалей (для внутренних поверхностей).
+        _inverted: Флаг инверсии нормалей (для внутренних поверхностей).
         color: Базовый цвет объекта.
         polygons: Список полигонов объекта с цветами.
     """
@@ -40,7 +40,7 @@ class Object(ABC):
     _direction: Vector3
     _scaling: Vector3
 
-    is_inverted: bool
+    _inverted: bool
 
     def __init__(
             self,
@@ -79,11 +79,11 @@ class Object(ABC):
         self._lighting_cache_valid: bool = False
 
         self.color: Color = np.array(color)
-        self.is_inverted: bool = inverted
+        self._inverted: bool = inverted
 
         self._raw_polygons: list[Polygon] = self._generate_polygons()
 
-        if self.is_inverted:
+        if self._inverted:
             for poly, color in self._raw_polygons:
                 poly[1], poly[2] = poly[2].copy(), poly[1].copy()
 

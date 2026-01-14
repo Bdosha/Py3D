@@ -9,7 +9,7 @@ from typing import Optional
 import numpy as np
 
 from core.object import Object
-from core.objects.light import Light
+from core.objects.lights import BaseLight
 from core.tools.types import Color
 
 
@@ -28,7 +28,7 @@ class LightingSystem:
         """Создаёт систему освещения."""
         self._cache: dict[str, tuple[list[Color], tuple, tuple]] = {}
     
-    def _get_light_states(self, lights: list[Light]) -> tuple:
+    def _get_light_states(self, lights: list[BaseLight]) -> tuple:
         """
         Получает состояния всех источников света для проверки изменений.
         
@@ -36,15 +36,15 @@ class LightingSystem:
             lights: Список источников света.
             
         Returns:
-            Кортеж состояний (позиция, направление, FOV, power) для каждого света.
+            Кортеж состояний (позиция, направление, power, _half_fov_cos) для каждого света.
         """
         states = []
         for light in lights:
             states.append((
                 tuple(light.position),
                 tuple(light.direction),
-                light.FOV,
-                light.power
+                light._power,
+                getattr(light, '_half_fov_cos', None),
             ))
         return tuple(states)
     
@@ -64,7 +64,7 @@ class LightingSystem:
             tuple(obj.scaling)
         )
     
-    def is_cache_valid(self, obj: Object, lights: list[Light]) -> bool:
+    def is_cache_valid(self, obj: Object, lights: list[BaseLight]) -> bool:
         """
         Проверяет валидность кэша для объекта.
         
@@ -75,7 +75,7 @@ class LightingSystem:
         Returns:
             True если кэш валиден, False если нужен пересчет.
         """
-        obj_id = str(obj._id)
+        obj_id = str(obj.id)
         
         # Если объекта нет в кэше, кэш невалиден
         if obj_id not in self._cache:
@@ -96,7 +96,7 @@ class LightingSystem:
         
         return True
     
-    def compute_lighting(self, obj: Object, lights: list[Light]) -> list[Color]:
+    def compute_lighting(self, obj: Object, lights: list[BaseLight]) -> list[Color]:
         """
         Вычисляет освещенные цвета для объекта.
         
