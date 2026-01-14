@@ -22,7 +22,7 @@ class FlashlightScript(RenderScript):
         scene.lights.append(self.flashlight)
         self.skybox = obj.Cube(
             position=(0, 20, 0),
-            scaling=(1,2,1),
+            scaling=(1, 2, 1),
             details=5,
             side=20,
             inverted=True
@@ -44,6 +44,6 @@ def flashlight_demo():
     )
 
     return App(
-        core.Scene(player),
-        FlashlightScript()
+        player=player,
+        render_script=FlashlightScript()
     )
