@@ -18,8 +18,8 @@ class Cube(Object):
     Куб с настраиваемым размером и детализацией.
     
     Attributes:
-        side: Длина стороны куба.
-        details: Уровень детализации (количество сегментов на грань).
+        _side: Длина стороны куба.
+        _details: Уровень детализации (количество сегментов на грань).
     """
 
     def __init__(
@@ -44,8 +44,8 @@ class Cube(Object):
             color: RGB цвет куба.
             inverted: Если True, нормали направлены внутрь (для скайбокса).
         """
-        self.side = side
-        self.details = details + 1  # +1 для корректного разбиения
+        self._side = side
+        self._details = details + 1  # +1 для корректного разбиения
 
         super().__init__(
             position=position,
@@ -62,12 +62,12 @@ class Cube(Object):
         Создаёт 6 граней, каждая разбивается на сетку треугольников
         в соответствии с уровнем детализации.
         """
-        half_side = self.side / 2
-        divisions = np.linspace(-half_side, half_side, self.details)
+        half_side = self._side / 2
+        divisions = np.linspace(-half_side, half_side, self._details)
 
         created_polygons: list[Polygon] = []
-        for i in range(1, self.details):
-            for j in range(1, self.details):
+        for i in range(1, self._details):
+            for j in range(1, self._details):
                 # Координаты текущей ячейки сетки
                 x0, x1 = divisions[i - 1], divisions[i]
                 y0, y1 = divisions[j - 1], divisions[j]

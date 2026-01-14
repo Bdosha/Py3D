@@ -6,7 +6,7 @@ from core.app import RenderScript, App
 class FlashlightScript(RenderScript):
     def __init__(self,
                  fov=15,
-                 power=15
+                 power=5
                  ):
         self.fov = fov
         self.power = power
@@ -15,15 +15,15 @@ class FlashlightScript(RenderScript):
         self.skybox = None
 
     def init(self, scene: Scene):
-        self.flashlight = core.Light(
+        self.flashlight = core.SpotLight(
             fov=self.fov,
             power=self.power,
         )
         scene.lights.append(self.flashlight)
         self.skybox = obj.Cube(
-            position=(0, 20, 0),
+            position=(0.1, 20, 0),
             scaling=(1, 2, 1),
-            details=5,
+            details=8,
             side=20,
             inverted=True
         )

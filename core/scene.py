@@ -9,7 +9,7 @@ import numpy as np
 
 from core.objects.player import Player
 from .screen import Screen
-from core.objects.light import Light
+from core.objects.lights import BaseLight
 from core.object import Object
 from core.objects.lighting import LightingSystem
 from core.tools.types import Polygon, DrawData
@@ -34,7 +34,7 @@ class Scene:
             screen: Screen,
             player: Player = Player(),
             objects: list[Object] = None,
-            lights: list[Light] = None,
+            lights: list[BaseLight] = None,
     ) -> None:
         """
         Создаёт сцену.
@@ -52,8 +52,8 @@ class Scene:
         self.player = player
 
         # Компоненты сцены
-        self.objects = objects
-        self.lights = lights
+        self.objects = objects if objects is not None else []
+        self.lights = lights if lights is not None else []
 
         # Система освещения
         self.lighting_system = LightingSystem()
@@ -160,5 +160,3 @@ class Scene:
 
         # Отрисовываем
         self.screen.multi_draw(draw_data)
-
-        # HUD элементы

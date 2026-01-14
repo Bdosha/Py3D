@@ -13,7 +13,7 @@
 from core.tools.types import Vector3, Vector2, Triangle, Color, Polygon
 from core.object import Object
 from core.objects.camera import Camera
-from core.objects.light import Light
+from core.objects.lights import BaseLight, SpotLight, PointLight
 from .scene import Scene
 from .screen import Screen
 from core.objects.player import Player
@@ -24,7 +24,9 @@ from core.app import App
 
 __all__ = [
     'Camera',
-    'Light',
+    'BaseLight',
+    'SpotLight',
+    'PointLight',
     'Object',
     'Scene',
     'Screen',

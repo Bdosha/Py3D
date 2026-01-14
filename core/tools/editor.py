@@ -11,7 +11,7 @@ from typing import Optional, Callable, Any
 import numpy as np
 
 from core.object import Object
-from core.objects.light import Light
+from core.objects.lights import BaseLight
 from core.objects.player import Player
 import core.tools.constants as constants_module
 
@@ -161,12 +161,16 @@ class HierarchyPanel:
     def hide(self):
         self.frame.pack_forget()
 
-    def update(self, objects: list[Object], lights: list[Light]):
+    def update(self, objects: list[Object], lights: list[BaseLight]):
         """Обновляет списки объектов и источников света."""
         # Очищаем объекты
         for btn in self.buttons['objects']:
             btn.destroy()
         self.buttons['objects'].clear()
+
+        # Проверяем, что objects не None
+        if objects is None:
+            objects = []
 
         for i, obj in enumerate(objects):
             btn = tk.Button(
@@ -186,10 +190,14 @@ class HierarchyPanel:
             btn.destroy()
         self.buttons['lights'].clear()
 
+        # Проверяем, что lights не None
+        if lights is None:
+            lights = []
+
         for i, light in enumerate(lights):
             btn = tk.Button(
                 self.lights_list,
-                text=f"  💡 Light [{i}]",
+                text=f"  💡 {light.__class__.__name__} [{i}]",
                 bg=DARK_THEME['bg_secondary'], fg='#ffcc00',
                 activebackground=DARK_THEME['accent'], activeforeground='white',
                 relief=tk.FLAT, anchor="w", padx=10, pady=3,
@@ -318,7 +326,7 @@ class InspectorPanel:
         if hasattr(obj, 'color'):
             self._add_color_palette("Color", obj.color)
 
-    def set_light(self, light: Optional[Light]):
+    def set_light(self, light: Optional[BaseLight]):
         """Показывает свойства источника света."""
         self.current_item = light
         self.current_type = 'light'
@@ -328,14 +336,16 @@ class InspectorPanel:
             self._show_empty()
             return
 
-        self._add_title("💡 Light", '#ffcc00')
+        self._add_title(f"💡 {light.__class__.__name__}", '#ffcc00')
         self._add_section("Transform")
         self._add_vector3("Position", light.position, self._on_light_position, (-100, 100))
         self._add_vector3("Direction", light.direction, self._on_light_direction, (-1, 1), resolution=0.01)
 
         self._add_section("Properties")
-        self._add_slider("FOV", light.FOV * 180 / np.pi, self._on_light_fov, (10, 180))
-        self._add_slider("Power", light.power * 10, self._on_light_power, (1, 50))
+        self._add_slider("Power", light._power * 10, self._on_light_power, (1, 500))
+        if hasattr(light, '_half_fov_cos'):
+            fov_deg = 2 * np.degrees(np.arccos(np.clip(light._half_fov_cos, -1, 1)))
+            self._add_slider("FOV", fov_deg, self._on_light_fov, (10, 180))
 
     def set_camera(self, player: Player):
         """Показывает свойства камеры."""
@@ -379,6 +389,8 @@ class InspectorPanel:
         self._add_section("Lighting")
         self._add_slider("Min Light Power", constants_module.MIN_LIGHT_POWER,
                          self._on_min_light_power, (0.1, 2.0), resolution=0.1)
+        self._add_slider("Default Light FOV", constants_module.DEFAULT_LIGHT_FOV,
+                         self._on_default_light_fov, (10, 90))
         self._add_slider("Light Falloff", constants_module.LIGHT_FALLOFF_MULTIPLIER,
                          self._on_light_falloff, (1, 50))
 
@@ -553,15 +565,17 @@ class InspectorPanel:
 
     def _on_light_fov(self, value: float):
         if self.current_item and self.current_type == 'light':
-            # Обновляем FOV и помечаем свет как перемещенный для пересчета освещения
-            self.current_item.FOV = value * np.pi / 180
+            if hasattr(self.current_item, 'fov'):
+                self.current_item.fov = value
+            elif hasattr(self.current_item, '_half_fov_cos'):
+                self.current_item._half_fov_cos = np.cos(np.radians(value / 2))
             self.current_item.set_moved(True)
             self.on_change()
 
     def _on_light_power(self, value: float):
         if self.current_item and self.current_type == 'light':
             # Обновляем power и помечаем свет как перемещенный для пересчета освещения
-            self.current_item.power = value / 10
+            self.current_item._power = value / 10
             self.current_item.set_moved(True)
             self.on_change()
 
@@ -591,7 +605,7 @@ class InspectorPanel:
 
     def _on_camera_fov(self, value: float):
         if self.current_item and self.current_type == 'camera':
-            self.current_item.FOV = value
+            self.current_item._half_fov_cos = value
             self.current_item._sync_camera()
             self.on_change()
 
@@ -620,6 +634,10 @@ class InspectorPanel:
         setattr(constants_module, 'MIN_LIGHT_POWER', value)
         self.on_change()
 
+    def _on_default_light_fov(self, value: float):
+        setattr(constants_module, 'DEFAULT_LIGHT_FOV', value)
+        self.on_change()
+
     def _on_light_falloff(self, value: float):
         setattr(constants_module, 'LIGHT_FALLOFF_MULTIPLIER', int(value))
         self.on_change()
@@ -631,10 +649,10 @@ class Editor:
     """
 
     def __init__(self, root: tk.Tk, objects: list[Object], canvas: tk.Canvas,
-                 lights: list = None, player: Player = None):
+                 lights: list[BaseLight] | None = None, player: Player = None):
         self.root = root
-        self.objects = objects
-        self.lights = lights or []
+        self.objects = objects if objects is not None else []
+        self.lights = lights if lights is not None else []
         self.player = player
         self.canvas = canvas
         self.visible = False
@@ -645,8 +663,10 @@ class Editor:
     def set_canvas(self, canvas: tk.Canvas):
         self.canvas = canvas
 
-    def set_lights(self, lights: list):
-        self.lights = lights
+    def set_lights(self, lights: list[BaseLight] | None) -> None:
+        self.lights = lights if lights is not None else []
+        if self.visible:
+            self.hierarchy.update(self.objects, self.lights)
 
     def set_player(self, player: Player):
         self.player = player
@@ -687,7 +707,7 @@ class Editor:
         pass
 
     def update_objects(self, objects: list[Object]):
-        self.objects = objects
+        self.objects = objects if objects is not None else []
         if self.visible:
             self.hierarchy.update(self.objects, self.lights)
 

@@ -52,7 +52,9 @@ def set_len(vector: NDArray, length: float) -> NDArray:
         Вектор того же направления с заданной длиной.
         Если исходный вектор нулевой, возвращает его без изменений.
     """
+    vector = vector.copy()
     vec_len = get_len(vector)
+
     if vec_len == 0:
         return vector
     return vector * length / vec_len
@@ -121,7 +123,7 @@ def create_matrix(rotate: tuple[float, float, float]) -> NDArray:
     return Mx @ My @ Mz
 
 
-def get_angle(vector1: NDArray, vector2: NDArray) -> float:
+def get_cos(vector1: NDArray, vector2: NDArray) -> float:
     """
     Вычисляет угол между двумя векторами.
     
@@ -132,10 +134,7 @@ def get_angle(vector1: NDArray, vector2: NDArray) -> float:
     Returns:
         Угол между векторами в радианах [0, π].
     """
-    dot = np.dot(set_ort(vector1), set_ort(vector2))
-    # Ограничиваем значение для избежания ошибок arccos
-    dot = np.clip(dot, -1.0, 1.0)
-    return np.arccos(dot)
+    return np.dot(set_ort(vector1), set_ort(vector2))
 
 
 def to_new_system(
