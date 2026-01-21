@@ -1,3 +1,1 @@
-from levels.colored_lighting import colored_lighting
-from levels.old_flashlight import flashlight_demo
-from levels.spining_model import model_demo
+from levels import benchmarks, feature

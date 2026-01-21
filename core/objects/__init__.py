@@ -4,13 +4,12 @@
 Модуль экспортирует все доступные геометрические примитивы
 и загрузчики моделей.
 """
-
+from core.objects.object import Object
 from core.objects.bodies.cube import Cube
 from core.objects.bodies.graphics import Graphic, ParametricSurface, Lab  # Lab - алиас для совместимости
 from core.objects.bodies.model import Model
 from core.objects.bodies.sphere import Sphere
 from core.objects.bodies.surface import Surface
-from core.objects.object import Object
 
 __all__ = [
     'Cube',

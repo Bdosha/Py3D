@@ -55,6 +55,16 @@ class Cube(Object):
             inverted=inverted
         )
 
+    @property
+    def details(self) -> int:
+        return self._details - 1
+
+    @details.setter
+    def details(self, value: int) -> None:
+        self._details = value + 1
+        self._raw_polygons= self._generate_polygons()
+        self._moved = True
+
     def _generate_polygons(self) -> list[Polygon]:
         """
         Генерирует полигоны куба.

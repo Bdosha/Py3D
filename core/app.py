@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import tkinter as tk
 
 from core import Scene, Object, BaseLight, Screen, Editor, Camera
-from core.app_scripts.base_scripts import AppScript
+from core.scripts.base_scripts import AppScript
 
 
 class Settings(BaseModel):
@@ -15,6 +15,19 @@ class Settings(BaseModel):
     show_fps: bool = True
     show_axes: bool = True
     fullscreen: bool = False
+
+
+class FrameStats(BaseModel):
+    scripts_time: float = 0
+    render_time: float = 0
+    draw_time: float = 0
+    total_time: float = 0
+
+    objects_count: int = 0
+    lights_count: int = 0
+    polygons_count: int = 0
+
+    fps: float = 0
 
 
 class App:
@@ -50,8 +63,6 @@ class App:
 
         self._app_scripts = app_scripts
 
-        self._frame_start = time.time()
-
         # Создаём редактор с объектами из сцены (изначально могут быть пустыми)
         self.editor = Editor(
             root=self.root,
@@ -71,16 +82,8 @@ class App:
             for script in self._app_scripts:
                 script.init(self.scene, self._bind_with_motion_wrapper)
 
-            self._run_scripts()
             self.editor.update_objects(self.scene.objects)
             self.editor.set_lights(self.scene.lights)
-
-    def _run_scripts(self):
-
-        for script in self._app_scripts:
-            script.run(self.scene)
-
-
 
     def _toggle_editor(self, event: Any = None) -> None:
         """Переключает режим редактора."""
@@ -116,7 +119,6 @@ class App:
         else:
             new_size = self.settings.screen_size
 
-
         # Пересоздаём canvas с новым размером
         self.screen.canvas.destroy()
         self.screen = Screen(self.root, new_size[0], new_size[1], bg_color=self.settings.bg_color)
@@ -135,7 +137,7 @@ class App:
         # Редактор
         self.root.bind("<Tab>", self._toggle_editor)
         self.root.bind("<Escape>", self._deselect_object)
-        
+
         # Привязываем обертку для Motion событий перед инициализацией скриптов
         self.root.bind("<Motion>", self._handle_motion_event)
 
@@ -166,27 +168,27 @@ class App:
         """
         if not self._editor_mode or not self.editor.visible:
             return False
-        
+
         # Получаем виджет под курсором используя координаты события
         # Используем x_root и y_root для получения абсолютных координат экрана
         x, y = event.x_root, event.y_root
         widget = self.root.winfo_containing(x, y)
-        
+
         if widget is None:
             return False
-        
+
         # Проверяем, является ли виджет частью панелей редактора
         # Проверяем hierarchy и inspector фреймы
         hierarchy_frame = self.editor.hierarchy.frame
         inspector_frame = self.editor.inspector.frame
-        
+
         # Проверяем, является ли виджет дочерним элементом панелей редактора
         current = widget
         while current:
             if current == hierarchy_frame or current == inspector_frame:
                 return True
             current = current.master
-        
+
         return False
 
     def _handle_motion_event(self, event: Any) -> None:
@@ -203,18 +205,18 @@ class App:
             for handler in self._motion_handlers:
                 handler(event)
             return
-        
+
         # Проверяем, находится ли курсор над редактором
         if not self._is_cursor_over_editor(event):
             # Курсор не над редактором - передаем события скриптам
             for handler in self._motion_handlers:
                 handler(event)
             return
-        
+
         # Курсор над редактором - проверяем, зажата ли кнопка мыши
         # event.state содержит флаги: 0x100 (Button1), 0x200 (Button2), 0x400 (Button3)
         mouse_button_pressed = (event.state & 0x100) or (event.state & 0x200) or (event.state & 0x400)
-        
+
         if mouse_button_pressed:
             # Кнопка мыши зажата над редактором - блокируем события
             return
@@ -223,36 +225,51 @@ class App:
             for handler in self._motion_handlers:
                 handler(event)
 
+    def tick(self) -> FrameStats:
+        stats = FrameStats()
+        _frame_start = time.time()
+
+        self.root.update()
+
+        for script in self._app_scripts:
+            script.run(self.scene)
+
+        stats.scripts_time = time.time() - _frame_start
+
+        frame_data = self.scene.render()
+        stats.render_time = time.time() - stats.scripts_time
+
+        self.screen.multi_draw(frame_data)
+        stats.draw_time = time.time() - stats.render_time
+
+        frame_time = time.time() - _frame_start
+        fps = 1.0 / frame_time if frame_time > 0 else 0
+
+        if self.settings.show_fps:
+            self.screen.draw_fps(fps)
+
+        if self.settings.show_axes:
+            self.screen.draw_axes_gizmo(self.scene.camera.direction)
+
+        # Подсказка про редактор
+        if not self._editor_mode:
+            self.screen.canvas.create_text(
+                self.screen.screen[0] - 10, 10,
+                text="Tab - Editor",
+                fill='#888888',
+                font=("Arial", 10),
+                anchor="ne"
+            )
+
+        stats.total_time = frame_time
+        stats.objects_count = len(self.scene.objects)
+        stats.lights_count = len(self.scene.lights)
+        stats.polygons_count = len(frame_data)
+
+        stats.fps = fps
+
+        return stats
+
     def run(self):
         while True:
-            self._frame_start = time.time()
-
-            self.root.update()
-
-            self._run_scripts()
-            print("Скрипты", time.time() - self._frame_start)
-
-            frame_data = self.scene.render()
-            print("Рендер", time.time() - self._frame_start)
-
-            self.screen.multi_draw(frame_data)
-            print("Вывод", time.time() - self._frame_start)
-            print()
-
-            if self.settings.show_fps:
-                frame_time = time.time() - self._frame_start
-                fps = 1.0 / frame_time if frame_time > 0 else 0
-                self.screen.draw_fps(fps)
-
-            if self.settings.show_axes:
-                self.screen.draw_axes_gizmo(self.scene.camera.direction)
-
-            # Подсказка про редактор
-            if not self._editor_mode:
-                self.screen.canvas.create_text(
-                    self.screen.screen[0] - 10, 10,
-                    text="Tab - Editor",
-                    fill='#888888',
-                    font=("Arial", 10),
-                    anchor="ne"
-                )
+            self.tick()

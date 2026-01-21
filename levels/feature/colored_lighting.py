@@ -6,7 +6,7 @@ import numpy as np
 import time
 
 from core.app import AppScript, App, Settings
-from core.app_scripts.player_script import PlayerScript
+from core.scripts.player_script import PlayerScript
 
 
 class RollingScript(AppScript):

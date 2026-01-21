@@ -3,7 +3,7 @@ from typing import Callable, override
 import core
 from core import obj, Scene
 from core.app import AppScript, App
-from core.app_scripts.player_script import PlayerScript
+from core.scripts.player_script import PlayerScript
 
 
 class BottleScript(AppScript):

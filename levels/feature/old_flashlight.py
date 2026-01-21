@@ -3,7 +3,7 @@ from typing import override, Callable
 import core
 from core import obj, Scene
 from core.app import AppScript, App
-from core.app_scripts.player_script import PlayerScript
+from core.scripts.player_script import PlayerScript
 
 
 class FlashlightScript(AppScript):
@@ -33,6 +33,7 @@ class FlashlightScript(AppScript):
         )
         scene.objects.append(self.skybox)
 
+    @override
     def run(self, scene: Scene):
         self.flashlight.position = scene.camera.position
         self.flashlight.direction = scene.camera.direction

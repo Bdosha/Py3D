@@ -65,7 +65,8 @@ class Camera(Object):
             direction=direction,
         )
 
-        self.fov: float = to_radians(180 - fov)
+        # Используем сеттер для правильной инициализации _view_dot и _focus
+        self.fov = fov
 
         # Храним обратную матрицу
         self._math_cache: None | np.ndarray = None
