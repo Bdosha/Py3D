@@ -1,12 +1,15 @@
+from typing import override, Callable
+
 import core
 from core import obj
 import numpy as np
 import time
 
-from core.app import RenderScript, App, Settings
+from core.app import AppScript, App, Settings
+from core.app_scripts.player_script import PlayerScript
 
 
-class RollingScript(RenderScript):
+class RollingScript(AppScript):
     def __init__(self,
                  radius=1.0,
                  center_y=0.0,
@@ -21,7 +24,8 @@ class RollingScript(RenderScript):
         self.rgb_lights = None
         self.ground = None
 
-    def init(self, scene: core.Scene):
+    @override
+    def init(self, scene: core.Scene, root_bind_func: Callable[[str, Callable], None] = None):
         self.rgb_lights = [
             core.SpotLight(color=(255, 0, 0)),
             core.SpotLight(color=(0, 255, 0)),
@@ -70,12 +74,12 @@ def colored_lighting():
     # Создаём сцену
 
     return App(
-        player=core.Player(
+        camera=core.Camera(
             position=(0, -14, 0),
             direction=(0, 1, 0)
         ),
         settings=Settings(bg_color='aqua'),
-        render_script=RollingScript())
+        app_scripts=[RollingScript(), PlayerScript()])
 
 
 if __name__ == "__main__":

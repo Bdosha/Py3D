@@ -7,7 +7,7 @@
 
 import numpy as np
 
-from core.object import Object
+from core.objects import Object
 from core.tools.types import Color, Polygon
 from core.tools.constants import (
     DEFAULT_COLOR,

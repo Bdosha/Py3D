@@ -8,7 +8,7 @@
 from typing import Optional
 import numpy as np
 
-from core.object import Object
+from core.objects import Object
 from core.objects.lights import BaseLight
 from core.tools.types import Color
 
@@ -109,7 +109,7 @@ class LightingSystem:
         Returns:
             Список освещенных цветов для каждого полигона объекта.
         """
-        obj_id = str(obj._id)
+        obj_id = obj.id
         
         # Проверяем кэш
         if self.is_cache_valid(obj, lights):

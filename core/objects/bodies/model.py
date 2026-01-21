@@ -8,7 +8,7 @@
 import numpy as np
 import trimesh
 
-from core.object import Object
+from core.objects import Object
 from core.tools.utils import swap
 from core.tools.types import Polygon
 from core.tools.constants import DEFAULT_POSITION, DEFAULT_ROTATION, DEFAULT_SCALING, DEFAULT_COLOR

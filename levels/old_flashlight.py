@@ -1,9 +1,12 @@
+from typing import override, Callable
+
 import core
 from core import obj, Scene
-from core.app import RenderScript, App
+from core.app import AppScript, App
+from core.app_scripts.player_script import PlayerScript
 
 
-class FlashlightScript(RenderScript):
+class FlashlightScript(AppScript):
     def __init__(self,
                  fov=15,
                  power=5
@@ -14,7 +17,8 @@ class FlashlightScript(RenderScript):
         self.flashlight = None
         self.skybox = None
 
-    def init(self, scene: Scene):
+    @override
+    def init(self, scene: Scene, root_bind_func: Callable[[str, Callable], None] = None):
         self.flashlight = core.SpotLight(
             fov=self.fov,
             power=self.power,
@@ -30,20 +34,20 @@ class FlashlightScript(RenderScript):
         scene.objects.append(self.skybox)
 
     def run(self, scene: Scene):
-        self.flashlight.position = scene.player.position
-        self.flashlight.direction = scene.player.direction
+        self.flashlight.position = scene.camera.position
+        self.flashlight.direction = scene.camera.direction
 
 
 def flashlight_demo():
     """Точка входа в приложение."""
 
     # Создаём игрока (камеру от первого лица)
-    player = core.Player(
+    camera = core.Camera(
         position=(0, 2, 0),
         direction=(0, 1, 0)
     )
 
     return App(
-        player=player,
-        render_script=FlashlightScript()
+        camera=camera,
+        app_scripts=[FlashlightScript(), PlayerScript()]
     )

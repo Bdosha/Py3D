@@ -11,12 +11,11 @@
 """
 
 from core.tools.types import Vector3, Vector2, Triangle, Color, Polygon
-from core.object import Object
+from core.objects.object import Object
 from core.objects.camera import Camera
 from core.objects.lights import BaseLight, SpotLight, PointLight
 from .scene import Scene
 from .screen import Screen
-from core.objects.player import Player
 from core.tools.editor import Editor
 from core.tools.constants import *
 import core.objects as obj
@@ -30,7 +29,6 @@ __all__ = [
     'Object',
     'Scene',
     'Screen',
-    'Player',
     'Vector3',
     'Vector2',
     'Triangle',

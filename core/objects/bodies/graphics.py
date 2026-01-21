@@ -8,7 +8,7 @@
 
 import numpy as np
 
-from core.object import Object
+from core.objects import Object
 from core.tools.types import SurfaceFunction, Polygon
 from core.tools.constants import DEFAULT_POSITION, DEFAULT_ROTATION, DEFAULT_SCALING
 from .load_graphic import load_parametric_surface, load_graphic

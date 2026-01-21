@@ -10,9 +10,9 @@ import tkinter as tk
 from typing import Optional, Callable, Any
 import numpy as np
 
-from core.object import Object
+from core import Camera
+from core.objects import Object
 from core.objects.lights import BaseLight
-from core.objects.player import Player
 import core.tools.constants as constants_module
 
 # =============================================================================
@@ -347,19 +347,19 @@ class InspectorPanel:
             fov_deg = 2 * np.degrees(np.arccos(np.clip(light._half_fov_cos, -1, 1)))
             self._add_slider("FOV", fov_deg, self._on_light_fov, (10, 180))
 
-    def set_camera(self, player: Player):
+    def set_camera(self, camera: Camera):
         """Показывает свойства камеры."""
-        self.current_item = player
+        self.current_item = camera
         self.current_type = 'camera'
         self._clear()
 
         self._add_title("📷 Camera", '#88ccff')
         self._add_section("Transform")
-        self._add_vector3("Position", player.position, self._on_camera_position, (-100, 100))
-        self._add_vector3("Direction", player.direction, self._on_camera_direction, (-1, 1), resolution=0.01)
+        self._add_vector3("Position", camera.position, self._on_camera_position, (-100, 100))
+        self._add_vector3("Direction", camera.direction, self._on_camera_direction, (-1, 1), resolution=0.01)
 
         self._add_section("Properties")
-        self._add_slider("FOV", player.FOV, self._on_camera_fov, (30, 120))
+        self._add_slider("FOV", camera.fov, self._on_camera_fov, (30, 120))
 
     def set_settings(self):
         """Показывает настройки глобальных констант."""
@@ -649,11 +649,11 @@ class Editor:
     """
 
     def __init__(self, root: tk.Tk, objects: list[Object], canvas: tk.Canvas,
-                 lights: list[BaseLight] | None = None, player: Player = None):
+                 lights: list[BaseLight] | None = None, camera: Camera = None):
         self.root = root
         self.objects = objects if objects is not None else []
         self.lights = lights if lights is not None else []
-        self.player = player
+        self.camera = camera
         self.canvas = canvas
         self.visible = False
 
@@ -667,9 +667,6 @@ class Editor:
         self.lights = lights if lights is not None else []
         if self.visible:
             self.hierarchy.update(self.objects, self.lights)
-
-    def set_player(self, player: Player):
-        self.player = player
 
     def toggle(self):
         self.visible = not self.visible
@@ -698,8 +695,8 @@ class Editor:
             self.inspector.set_object(self.objects[index])
         elif item_type == 'light' and 0 <= index < len(self.lights):
             self.inspector.set_light(self.lights[index])
-        elif item_type == 'camera' and self.player:
-            self.inspector.set_camera(self.player)
+        elif item_type == 'camera' and self.camera:
+            self.inspector.set_camera(self.camera)
         elif item_type == 'settings':
             self.inspector.set_settings()
 

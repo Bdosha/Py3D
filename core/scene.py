@@ -7,11 +7,10 @@
 
 import numpy as np
 
-from core.objects.player import Player
-from .screen import Screen
+from core.objects.camera import Camera
 from core.objects.lights import BaseLight
-from core.object import Object
-from core.objects.lighting import LightingSystem
+from core.objects.object import Object
+from core.objects.lights.lighting import LightingSystem
 from core.tools.types import Polygon, DrawData
 
 
@@ -23,16 +22,14 @@ class Scene:
     экран. Управляет рендерингом и обработкой ввода.
     
     Attributes:
-        player: Контроллер игрока с камерой.
         objects: Список 3D объектов на сцене.
         lights: Список источников света.
-        screen: Экран для рендеринга.
     """
 
     def __init__(
             self,
-            screen: Screen,
-            player: Player = Player(),
+            screen_size: tuple[int, int],
+            camera: Camera = Camera(),
             objects: list[Object] = None,
             lights: list[BaseLight] = None,
     ) -> None:
@@ -40,16 +37,11 @@ class Scene:
         Создаёт сцену.
         
         Args:
-            player: Контроллер игрока.
-            # screen_size: Размер окна (ширина, высота).
             objects: Список 3D объектов.
             lights: Список источников света.
-            # show_fps: Показывать счётчик FPS.
-            # show_axes: Показывать индикатор осей координат.
-            # fullscreen: Запустить в полноэкранном режиме.
         """
         # Инициализация игрока
-        self.player = player
+        self.camera = camera
 
         # Компоненты сцены
         self.objects = objects if objects is not None else []
@@ -59,7 +51,7 @@ class Scene:
         self.lighting_system = LightingSystem()
 
         # Экран
-        self.screen = screen
+        self.screen_size = np.array(screen_size)
 
         self._attributes_hash: dict[str, Object] = {}
 
@@ -87,7 +79,7 @@ class Scene:
 
         # Векторизованное вычисление центров и расстояний
         centers = np.array([np.mean(poly, axis=0) for poly, _ in polygons])
-        distances = np.linalg.norm(centers - self.player.position, axis=1)
+        distances = np.linalg.norm(centers - self.camera.position, axis=1)
 
         # Сортируем по убыванию расстояния (дальние первые)
         sorted_indices = np.argsort(distances)[::-1]
@@ -114,7 +106,7 @@ class Scene:
         # Устанавливаем освещенные цвета в объект
         obj.set_lighting_colors(lighting_colors)
 
-    def render(self) -> None:
+    def render(self) -> list[DrawData]:
         """
         Отрисовывает один кадр сцены.
         
@@ -141,7 +133,7 @@ class Scene:
 
             # Фильтруем видимые полигоны
             for poly in lighted_polygons:
-                if self.player.camera.is_polygon_visible(poly[0]):
+                if self.camera.is_polygon_visible(poly[0]):
                     visible_polys.append(poly)
 
         # Сбрасываем флаги движения источников света
@@ -154,9 +146,9 @@ class Scene:
         # Подготавливаем данные для отрисовки
         draw_data: list[DrawData] = []
         for poly, color in visible_polys:
-            screen_coords = self.player.camera.get_canvas_coords(poly, self.screen.screen)
+            screen_coords = self.camera.get_canvas_coords(poly, self.screen_size)
             if screen_coords is not None:
                 draw_data.append((screen_coords, color))
 
         # Отрисовываем
-        self.screen.multi_draw(draw_data)
+        return draw_data

@@ -6,75 +6,44 @@
 """
 
 import numpy as np
-from typing import Any
+from typing import Any, override, Callable
 
 from core.objects.camera import Camera
-from core.tools.types import Vector2, Vector3
+from core.tools.types import Vector2
 from core.tools.constants import (
-    DEFAULT_FOV,
-    DEFAULT_POSITION,
-    DEFAULT_DIRECTION,
     UP_VECTOR
 )
-from core import Object, Polygon
 from core.tools import constants
 from core.tools.utils import set_ort, get_len
 
 
-class Player(Object):
+class Player:
     """
     Контроллер камеры от первого лица.
-    
+
     Управляет камерой через WASD (движение), Space/Z (вверх/вниз) и движение мыши (поворот).
-    
+
     Attributes:
         camera: Камера, привязанная к игроку.
-        position: Текущая позиция игрока.
-        direction: Направление взгляда.
-        FOV: Угол обзора.
-        _screen: Размер экрана (для расчёта поворота мышью).
     """
 
     def __init__(
-        self,
-        position: tuple[float, float, float] = DEFAULT_POSITION,
-        direction: tuple[float, float, float] = DEFAULT_DIRECTION,
-        fov: float = DEFAULT_FOV
+            self,
+
+            camera: Camera = None,
     ) -> None:
         """
         Создаёт игрока с камерой.
-        
+
         Args:
-            position: Начальная позиция.
-            direction: Начальное направление взгляда.
-            fov: Угол обзора камеры.
         """
 
         # Защита от нулевого направления
-        if all(d == 0 for d in direction):
-            direction = DEFAULT_DIRECTION
-        super().__init__(
-            position=position,
-            direction=direction,
-        )
-        self.FOV: float = fov
-
         # Камера синхронизирована с игроком
-        self.camera = Camera(position, direction, fov)
+        self.camera = camera
 
         # Для отслеживания движения мыши
         self._last_cursor: None | Vector2 = None
-        self._screen: Vector2 = np.array([800.0, 600.0])  # Размер по умолчанию
-
-    @property
-    def screen(self) -> Vector2:
-        """Размер экрана для расчёта поворота мышью."""
-        return self._screen
-
-    @screen.setter
-    def screen(self, value: Vector2) -> None:
-        """Устанавливает размер экрана."""
-        self._screen = np.array(value, dtype=np.float32)
 
     @property
     def last(self) -> Vector2:
@@ -89,7 +58,7 @@ class Player(Object):
     def move(self, event: Any) -> None:
         """
         Обрабатывает нажатие клавиш движения.
-        
+
         Управление:
         - W: вперёд
         - S: назад
@@ -97,7 +66,7 @@ class Player(Object):
         - D: вправо
         - Space: вверх
         - Z: вниз
-        
+
         Args:
             event: Событие клавиатуры tkinter.
         """
@@ -108,14 +77,14 @@ class Player(Object):
 
         if key in ('w', 's'):
             # Движение вперёд/назад (без вертикальной составляющей)
-            forward = self.direction.copy()
+            forward = self.camera.direction.copy()
             forward[2] = 0  # Убираем вертикальную составляющую
             direction_sign = 1 if key == 'w' else -1
             movement = set_ort(forward) * direction_sign
 
         elif key in ('a', 'd'):
             # Движение влево/вправо (страфинг)
-            right = np.cross(self.direction, up)
+            right = np.cross(self.camera.direction, up)
             direction_sign = 1 if key == 'd' else -1
             movement = set_ort(right) * direction_sign
 
@@ -127,21 +96,20 @@ class Player(Object):
             # Движение вниз
             movement = -up * constants.VERTICAL_SPEED / constants.MOVE_SPEED
 
-        # Применяем движение
-        self.position += set_ort(movement) * constants.MOVE_SPEED
-        self._sync_camera()
+        # Применяем движение (используем присваивание через сеттер, а не +=)
+        self.camera.position = self.camera.position + set_ort(movement) * constants.MOVE_SPEED
 
     def turn(self, event: Any) -> None:
         """
         Обрабатывает движение мыши для поворота камеры.
-        
+
         Использует дельту движения мыши для плавного поворота.
-        
+
         Args:
             event: Событие движения мыши tkinter.
         """
         # Позиция курсора относительно центра экрана
-        cursor = np.array([event.x, event.y], dtype=np.float32) - self._screen / 2
+        cursor = np.array([event.x, event.y], dtype=np.float32)  # - self._screen / 2
         cursor[1] *= -1  # Инвертируем Y
 
         # event.state == 0 означает просто движение без нажатия кнопки
@@ -155,8 +123,8 @@ class Player(Object):
 
         # Строим локальный базис камеры для поворота
         up = np.array(UP_VECTOR, dtype=np.float32)
-        right = np.cross(self.direction, up)
-        camera_up = np.cross(right, self.direction)
+        right = np.cross(self.camera.direction, up)
+        camera_up = np.cross(right, self.camera.direction)
 
         # Нормализуем базисные векторы
         right_len = get_len(right)
@@ -172,65 +140,47 @@ class Player(Object):
         sensitivity = constants.MOUSE_SENSITIVITY / (np.sum(np.abs(delta / 10)) + 1e-4)
         rotation = (right * delta[0] + camera_up * delta[1]) / sensitivity
 
-        # Применяем поворот
-        self.direction += rotation
-        self.direction = set_ort(self.direction)
+        # Применяем поворот (используем присваивание через сеттер, а не +=)
+        new_direction = self.camera.direction + rotation
+        self.camera.direction = set_ort(new_direction)
 
         # Ограничиваем вертикальный угол (pitch) чтобы избежать gimbal lock
         # Не даём смотреть ровно вверх или вниз (максимум ~85 градусов)
         max_pitch = 0.95  # cos(~18°) от горизонта, т.е. ~72° от вертикали
-        if abs(self.direction[2]) > max_pitch:
+        current_direction = self.camera.direction.copy()
+        if abs(current_direction[2]) > max_pitch:
             # Сохраняем горизонтальное направление, ограничиваем вертикальное
-            self.direction[2] = max_pitch if self.direction[2] > 0 else -max_pitch
-            self.direction = set_ort(self.direction)
+            current_direction[2] = max_pitch if current_direction[2] > 0 else -max_pitch
+            self.camera.direction = set_ort(current_direction)
 
-        self._sync_camera()
 
-    @property
-    def direction(self) -> Vector3:
-        """
-        Направление взгляда игрока (нормализованный вектор).
-        
-        Это не углы Эйлера, а вектор направления в 3D пространстве.
-        """
-        return self._direction
+from core import Scene
+from core.app import AppScript
 
-    @direction.setter
-    def direction(self, value: tuple[float, float, float] | Vector3):
-        """
-        Устанавливает направление взгляда игрока.
-        
-        Вектор автоматически нормализуется. Если вектор нулевой,
-        используется направление по умолчанию. Также синхронизируется
-        камера.
-        
-        Args:
-            value: Вектор направления (будет нормализован).
-        """
-        direction_arr = np.array(value, dtype=np.float32)
 
-        # Защита от нулевого направления
-        length = get_len(direction_arr)
-        if length < 1e-6:
-            direction_arr = np.array(DEFAULT_DIRECTION, dtype=np.float32)
-            length = get_len(direction_arr)
+class PlayerScript(AppScript):
+    def __init__(self,
+                 fov=90,
+                 ):
+        self.fov = fov
 
-        # Нормализуем вектор
-        new = set_ort(direction_arr)
+        self.player = None
 
-        # Проверяем, изменилось ли направление
-        self._moved = not np.array_equal(new, self._direction)
-        self._direction = new
+    @override
+    def init(self, scene: Scene, root_bind_func: Callable[[str, Callable], None] = None):
+        scene.camera.fov = self.fov
+        self.player = Player(scene.camera)
 
-        # Синхронизируем камеру при изменении направления (если она уже создана)
-        if self._moved:
-            if hasattr(self, 'camera'):
-                self._sync_camera()
-            self.invalidate_lighting_cache()
+        for key in ['w', 's', 'a', 'd']:
+            root_bind_func(f'<{key}>', self.player.move)
 
-    def _sync_camera(self) -> None:
-        """Синхронизирует камеру с позицией и направлением игрока."""
-        self.camera.set_position(self.position, self.direction, self.FOV)
+        # Вверх/вниз
+        root_bind_func('<space>', self.player.move)
+        root_bind_func('<z>', self.player.move)
 
-    def _generate_polygons(self) -> list[Polygon]:
-        return []
+        # Поворот мышью
+        root_bind_func("<Motion>", self.player.turn)
+
+    @override
+    def run(self, scene: Scene, ):
+        pass

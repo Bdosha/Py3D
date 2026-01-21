@@ -1,14 +1,18 @@
+from typing import Callable, override
+
 import core
 from core import obj, Scene
-from core.app import RenderScript, App
+from core.app import AppScript, App
+from core.app_scripts.player_script import PlayerScript
 
 
-class BottleScript(RenderScript):
+class BottleScript(AppScript):
     def __init__(self):
         self.bottle = None
         self._i = 0
 
-    def init(self, scene: Scene):
+    @override
+    def init(self, scene: Scene, root_bind_func: Callable[[str, Callable], None] = None):
         self.bottle = obj.Model(
             model_path="levels/scene.gltf",
             position=(0, 20, 0),
@@ -30,5 +34,5 @@ class BottleScript(RenderScript):
 def model_demo():
     """Точка входа в приложение."""
     return App(
-        render_script=BottleScript(),
+        app_scripts=[BottleScript(), PlayerScript()],
     )

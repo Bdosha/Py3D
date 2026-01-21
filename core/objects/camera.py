@@ -33,13 +33,13 @@ class Camera(Object):
         direction: Нормализованное направление взгляда.
         FOV: Угол обзора в радианах.
         focus: Фокусное расстояние.
-        view_dot: Точка фокуса для проекции.
+        _view_dot: Точка фокуса для проекции.
     """
     position: Vector3
     direction: Vector3
     FOV: float
     focus: float
-    view_dot: Vector3
+    _view_dot: Vector3
 
     def __init__(
             self,
@@ -55,52 +55,40 @@ class Camera(Object):
             direction: Направление взгляда (будет нормализовано).
             fov: Угол обзора в градусах (обычно 60-120).
         """
+        # Инициализируем _focus и _view_dot до super().__init__(), 
+        # чтобы сеттеры position/direction не падали
+        self._view_dot = None
+        self._focus: float = None
+        
         super().__init__(
             position=position,
             direction=direction,
         )
 
-        self.FOV: float = to_radians(180 - DEFAULT_FOV)
-        self.focus: float = DEFAULT_FOCUS
-
-        self.set_position(position, direction, fov)
+        self.fov: float = to_radians(180 - fov)
 
         # Храним обратную матрицу
         self._math_cache: None | np.ndarray = None
 
-    def set_position(
-            self,
-            position: tuple[float, float, float] = DEFAULT_POSITION,
-            direction: tuple[float, float, float] = DEFAULT_DIRECTION,
-            fov: float = DEFAULT_FOV
-    ) -> None:
-        """
-        Перемещает камеру в новую позицию с новым направлением.
-        
-        Args:
-            position: Новая позиция камеры.
-            direction: Новое направление взгляда.
-            fov: Новый угол обзора в градусах.
-        """
-        # Защита от нулевого направления
-        if all(d == 0 for d in direction):
-            direction = DEFAULT_DIRECTION
+    #
+    @property
+    def fov(self) -> float:
+        return self._fov
 
-        self.FOV = to_radians(180 - fov)
-        self.focus = DEFAULT_FOCUS
-        self.position = position
-        self.direction = direction
+    @fov.setter
+    def fov(self, fov: float) -> None:
+        self._fov = to_radians(180 - fov)
+        self._focus = DEFAULT_FOCUS
+        self._view_dot = self.position + self.direction * (self._focus / 2 * np.tan(self._fov / 2))
 
-        # Вычисляем точку фокуса для проекции
-        # view_dot находится перед камерой на расстоянии, зависящем от FOV
-        self.view_dot = self.position + self.direction * (self.focus / 2 * np.tan(self.FOV / 2))
+        self._moved = True
 
     def is_point_visible(self, point: Vector3) -> bool:
         to_vertex = point - self.position
         to_vertex_norm = set_ort(to_vertex)
         dot = np.dot(to_vertex_norm, self.direction)
         # cos(FOV/2) вместо arccos
-        return dot >= np.cos(self.FOV / 2)
+        return dot >= np.cos(self.fov / 2)
 
     def is_polygon_visible(self, poly: Triangle) -> bool:
         """
@@ -173,7 +161,7 @@ class Camera(Object):
             self._moved = False
 
         # Преобразуем точку и масштабируем
-        result = (M_inv @ (point.T - self.view_dot))[:2] * (constants.PROJECTION_SCALE / self.focus)
+        result = (M_inv @ (point.T - self._view_dot))[:2] * (constants.PROJECTION_SCALE / self._focus)
         result[1] *= -1  # Инвертируем Y (экранные координаты растут вниз)
         return result
 
@@ -205,7 +193,7 @@ class Camera(Object):
         ])
 
         b = np.array([
-            [(self.view_dot * self.direction).sum()],
+            [(self._view_dot * self.direction).sum()],
             [ray[1] * self.position[0] - ray[0] * self.position[1]],
             [ray[2] * self.position[0] - ray[0] * self.position[2]]
         ])
@@ -242,7 +230,7 @@ class Camera(Object):
     def position(self) -> Vector3:
         """Позиция камеры в мировых координатах."""
         return self._position
-    
+
     @position.setter
     def position(self, value: tuple[float, float, float] | Vector3):
         """
@@ -257,16 +245,16 @@ class Camera(Object):
         new = np.array(value, dtype=np.float32)
         self._moved = not np.array_equal(new, self._position)
         self._position = new
-        
+
         # Пересчитываем точку фокуса при изменении позиции
         if self._moved:
             # Проверяем, что focus и FOV уже инициализированы
-            if hasattr(self, 'focus') and hasattr(self, 'FOV'):
-                self.view_dot = self.position + self.direction * (self.focus / 2 * np.tan(self.FOV / 2))
+            if self._focus is not None:
+                self._view_dot = self.position + self.direction * (self._focus / 2 * np.tan(self._fov / 2))
             # Инвалидируем кэш матриц для пересчета
             self._math_cache = None
             self.invalidate_lighting_cache()
-    
+
     @property
     def direction(self) -> Vector3:
         """
@@ -275,7 +263,7 @@ class Camera(Object):
         Это не углы Эйлера, а вектор направления в 3D пространстве.
         """
         return self._direction
-    
+
     @direction.setter
     def direction(self, value: tuple[float, float, float] | Vector3):
         """
@@ -289,25 +277,25 @@ class Camera(Object):
             value: Вектор направления (будет нормализован).
         """
         direction_arr = np.array(value, dtype=np.float32)
-        
+
         # Защита от нулевого направления
         length = np.linalg.norm(direction_arr)
         if length < 1e-6:
             direction_arr = np.array(DEFAULT_DIRECTION, dtype=np.float32)
             length = np.linalg.norm(direction_arr)
-        
+
         # Нормализуем вектор
         new = set_ort(direction_arr)
-        
+
         # Проверяем, изменилось ли направление
         self._moved = not np.array_equal(new, self._direction)
         self._direction = new
-        
+
         # Пересчитываем точку фокуса при изменении направления
         if self._moved:
             # Проверяем, что focus и FOV уже инициализированы
-            if hasattr(self, 'focus') and hasattr(self, 'FOV'):
-                self.view_dot = self.position + self.direction * (self.focus / 2 * np.tan(self.FOV / 2))
+            if self._focus is not None:
+                self._view_dot = self.position + self.direction * (self._focus / 2 * np.tan(self._fov / 2))
             # Инвалидируем кэш матриц для пересчета
             self._math_cache = None
             self.invalidate_lighting_cache()

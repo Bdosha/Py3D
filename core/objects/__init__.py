@@ -10,6 +10,7 @@ from core.objects.bodies.graphics import Graphic, ParametricSurface, Lab  # Lab 
 from core.objects.bodies.model import Model
 from core.objects.bodies.sphere import Sphere
 from core.objects.bodies.surface import Surface
+from core.objects.object import Object
 
 __all__ = [
     'Cube',
@@ -19,4 +20,5 @@ __all__ = [
     'Model',
     'Sphere',
     'Surface',
+    'Object',
 ]
