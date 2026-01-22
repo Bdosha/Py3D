@@ -586,7 +586,6 @@ class InspectorPanel:
             pos = list(self.current_item.position)
             pos[axis] = value
             self.current_item.position = tuple(pos)
-            self.current_item._sync_camera()
             self.on_change()
 
     def _on_camera_direction(self, axis: int, value: float):
@@ -600,13 +599,12 @@ class InspectorPanel:
             if length > 0:
                 direction_arr = direction_arr / length
             self.current_item.direction = tuple(direction_arr)
-            self.current_item._sync_camera()
             self.on_change()
 
     def _on_camera_fov(self, value: float):
         if self.current_item and self.current_type == 'camera':
             self.current_item._half_fov_cos = value
-            self.current_item._sync_camera()
+            self.current_item.fov = value
             self.on_change()
 
     # === Settings callbacks ===

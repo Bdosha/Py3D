@@ -155,7 +155,7 @@ class Player:
 
 
 from core import Scene
-from core.app import AppScript
+from core.scripts.base_script import AppScript
 
 
 class PlayerScript(AppScript):

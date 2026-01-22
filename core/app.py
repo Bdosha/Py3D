@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import tkinter as tk
 
 from core import Scene, Object, BaseLight, Screen, Editor, Camera
-from core.scripts.base_scripts import AppScript
+from core.scripts.base_script import AppScript
 
 
 class Settings(BaseModel):
@@ -61,7 +61,7 @@ class App:
             lights=lights if lights is not None else [],
         )
 
-        self._app_scripts = app_scripts
+        self._app_scripts = app_scripts if app_scripts is not None else []
 
         # Создаём редактор с объектами из сцены (изначально могут быть пустыми)
         self.editor = Editor(

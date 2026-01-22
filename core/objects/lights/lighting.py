@@ -5,8 +5,9 @@
 Отделяет логику освещения от рендеринга для лучшей архитектуры.
 """
 
-from typing import Optional
+from typing import Optional, override
 import numpy as np
+from setuptools.command.egg_info import overwrite_arg
 
 from core.objects import Object
 from core.objects.lights import BaseLight
@@ -165,4 +166,7 @@ class LightingSystem:
     def clear_cache(self) -> None:
         """Очищает весь кэш освещения."""
         self._cache.clear()
+
+
+
 

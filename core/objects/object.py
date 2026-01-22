@@ -33,7 +33,6 @@ class Object(ABC):
         scaling: Масштаб объекта по осям X, Y, Z.
         _inverted: Флаг инверсии нормалей (для внутренних поверхностей).
         color: Базовый цвет объекта.
-        polygons: Список полигонов объекта с цветами.
     """
 
     _position: Vector3
@@ -177,15 +176,15 @@ class Object(ABC):
         """
         if not colors:
             return
-        
+
         if len(colors) != len(self._transformed_polygons):
             raise ValueError(
                 f"Количество цветов ({len(colors)}) не совпадает с "
                 f"количеством полигонов ({len(self._transformed_polygons)})"
             )
-        
+
         self._transformed_polygons = [(poly[0], colors[i]) for i, poly in enumerate(self._transformed_polygons)]
-    
+
     def set_lighting_colors(self, colors: list[Color]) -> None:
         """
         Устанавливает освещенные цвета для полигонов.
@@ -197,16 +196,16 @@ class Object(ABC):
             self._lighting_colors = None
             self._lighting_cache_valid = False
             return
-        
+
         if len(colors) != len(self.polygons):
             raise ValueError(
                 f"Количество цветов ({len(colors)}) не совпадает с "
                 f"количеством полигонов ({len(self.polygons)})"
             )
-        
+
         self._lighting_colors = colors
         self._lighting_cache_valid = True
-    
+
     def get_lighted_polygons(self) -> list[Polygon]:
         """
         Возвращает полигоны с освещенными цветами.
@@ -218,14 +217,14 @@ class Object(ABC):
             Список полигонов с цветами (освещенными или базовыми).
         """
         polygons = self.polygons
-        
+
         if self._lighting_colors is not None and self._lighting_cache_valid:
             # Возвращаем полигоны с освещенными цветами
             return [(poly[0], self._lighting_colors[i]) for i, poly in enumerate(polygons)]
         else:
             # Возвращаем полигоны с базовыми цветами
             return polygons
-    
+
     def invalidate_lighting_cache(self) -> None:
         """Инвалидирует кэш освещения объекта."""
         self._lighting_cache_valid = False
@@ -253,3 +252,7 @@ class Object(ABC):
         for poly, color in polygons:
             inverted_polys.append((swap(poly), color))
         return inverted_polys
+
+    def destroy(self):
+        self._raw_polygons = []
+        self.position = (0, 0, 0)

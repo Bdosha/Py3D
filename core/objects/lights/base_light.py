@@ -6,6 +6,7 @@
 """
 import abc
 from abc import ABC
+from typing import override
 
 import numpy as np
 
@@ -123,3 +124,9 @@ class BaseLight(Object, ABC):
 
     def _generate_polygons(self) -> list[Polygon]:
         return []
+
+    @override
+    def destroy(self):
+        self._power = 0
+        self._moved = True
+

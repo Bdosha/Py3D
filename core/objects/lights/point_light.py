@@ -83,6 +83,8 @@ class PointLight(BaseLight):
 
         # Затухание по расстоянию
         distance = get_len(center - self.position)
+        if distance < 0.01:
+            distance = 0.1
         falloff = self._power / distance * constants.LIGHT_FALLOFF_MULTIPLIER
 
         # Итоговая интенсивность (не меньше 0)
