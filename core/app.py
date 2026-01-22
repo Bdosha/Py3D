@@ -41,9 +41,6 @@ class App:
 
         self.settings = settings if settings is not None else Settings()
 
-        # self.camera = camera
-        # self.player.screen = np.array(self.settings.screen_size)
-
         self.root = tk.Tk()
         self.root.title(self.settings.window_title)
         self.root.config(cursor="none", bg='#2b2b2b')
@@ -56,7 +53,6 @@ class App:
         self.scene = Scene(
             screen_size=self.settings.screen_size,
             camera=camera,
-            # player=player,
             objects=objects if objects is not None else [],
             lights=lights if lights is not None else [],
         )
@@ -115,13 +111,21 @@ class App:
 
         # Определяем новый размер экрана
         if self.settings.fullscreen:
-            new_size = (self.root.winfo_screenwidth(), self.root.winfo_screenheight())
+            new_size = (
+                self.root.winfo_screenwidth(),
+                self.root.winfo_screenheight()
+            )
         else:
             new_size = self.settings.screen_size
 
         # Пересоздаём canvas с новым размером
         self.screen.canvas.destroy()
-        self.screen = Screen(self.root, new_size[0], new_size[1], bg_color=self.settings.bg_color)
+        self.screen = Screen(
+            self.root,
+            new_size[0],
+            new_size[1],
+            bg_color=self.settings.bg_color
+        )
         # Обновляем ссылку на screen в сцене
         self.scene.screen = self.screen
         self.editor.set_canvas(self.screen.canvas)
@@ -215,7 +219,11 @@ class App:
 
         # Курсор над редактором - проверяем, зажата ли кнопка мыши
         # event.state содержит флаги: 0x100 (Button1), 0x200 (Button2), 0x400 (Button3)
-        mouse_button_pressed = (event.state & 0x100) or (event.state & 0x200) or (event.state & 0x400)
+        mouse_button_pressed = (
+            (event.state & 0x100) or
+            (event.state & 0x200) or
+            (event.state & 0x400)
+        )
 
         if mouse_button_pressed:
             # Кнопка мыши зажата над редактором - блокируем события

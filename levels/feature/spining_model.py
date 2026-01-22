@@ -3,8 +3,6 @@ from typing import Callable, override
 import core
 from core import obj, Scene
 from core.app import AppScript, App
-from core.scripts.move_script import DeltaMoveScript
-from core.scripts.player_script import PlayerScript
 
 
 class BottleScript(AppScript):
@@ -15,9 +13,8 @@ class BottleScript(AppScript):
     @override
     def init(self, scene: Scene, root_bind_func: Callable[[str, Callable], None] = None):
         self.bottle = obj.Model(
-            model_path="levels/scene.gltf",
-            position=(0, 20, 0),
-            color=(255, 255, 255)
+            model_path="levels/feature/scene.gltf",
+            position=(0.1, 20, 0),
         )
         scene.lights.append(
             core.SpotLight(
@@ -34,18 +31,7 @@ class BottleScript(AppScript):
 
 def model_demo():
     """Точка входа в приложение."""
-    bottle = obj.Model(
-        model_path="levels/feature/scene.gltf",
-        position=(5, 20, 0),
-        direction=(-90, 0, 0),
-    )
+
     return App(
-        objects=[bottle],
-        app_scripts=[
-            DeltaMoveScript(bottle,
-                            speed=0.5,
-                            position_delta=(-10, 0, 0),
-                            direction_delta=(0, 720, 0)
-                            )
-        ],
+        app_scripts=[BottleScript()]
     )

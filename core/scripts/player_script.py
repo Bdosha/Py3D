@@ -27,21 +27,14 @@ class Player:
         camera: Камера, привязанная к игроку.
     """
 
-    def __init__(
-            self,
-
-            camera: Camera = None,
-    ) -> None:
+    def __init__(self, camera: Camera = None) -> None:
         """
-        Создаёт игрока с камерой.
+        Создаёт контроллер камеры от первого лица.
 
         Args:
+            camera: Камера для управления. Если None, должна быть установлена позже.
         """
-
-        # Защита от нулевого направления
-        # Камера синхронизирована с игроком
         self.camera = camera
-
         # Для отслеживания движения мыши
         self._last_cursor: None | Vector2 = None
 
@@ -97,7 +90,11 @@ class Player:
             movement = -up * constants.VERTICAL_SPEED / constants.MOVE_SPEED
 
         # Применяем движение (используем присваивание через сеттер, а не +=)
-        self.camera.position = self.camera.position + set_ort(movement) * constants.MOVE_SPEED
+        new_position = (
+            self.camera.position +
+            set_ort(movement) * constants.MOVE_SPEED
+        )
+        self.camera.position = new_position
 
     def turn(self, event: Any) -> None:
         """
@@ -137,7 +134,9 @@ class Player:
 
         # Вычисляем поворот на основе движения мыши
         # Чувствительность зависит от скорости движения
-        sensitivity = constants.MOUSE_SENSITIVITY / (np.sum(np.abs(delta / 10)) + 1e-4)
+        sensitivity = constants.MOUSE_SENSITIVITY / (
+            np.sum(np.abs(delta / 10)) + 1e-4
+        )
         rotation = (right * delta[0] + camera_up * delta[1]) / sensitivity
 
         # Применяем поворот (используем присваивание через сеттер, а не +=)
@@ -159,18 +158,39 @@ from core.scripts.base_script import AppScript
 
 
 class PlayerScript(AppScript):
-    def __init__(self,
-                 fov=90,
-                 ):
+    """
+    Скрипт управления камерой от первого лица.
+    
+    Предоставляет управление камерой через WASD (движение),
+    Space/Z (вверх/вниз) и движение мыши (поворот).
+    """
+    
+    def __init__(self, fov: float = 90):
+        """
+        Создаёт скрипт управления камерой.
+        
+        Args:
+            fov: Угол обзора камеры в градусах (по умолчанию 90).
+        """
         self.fov = fov
-
         self.player = None
 
     @override
     def init(self, scene: Scene, root_bind_func: Callable[[str, Callable], None] = None):
+        """
+        Инициализирует управление камерой.
+        
+        Устанавливает FOV камеры и привязывает обработчики
+        для клавиатуры (WASD, Space, Z) и мыши (Motion).
+        
+        Args:
+            scene: Сцена с камерой для управления.
+            root_bind_func: Функция для привязки обработчиков событий.
+        """
         scene.camera.fov = self.fov
         self.player = Player(scene.camera)
 
+        # Движение WASD
         for key in ['w', 's', 'a', 'd']:
             root_bind_func(f'<{key}>', self.player.move)
 
@@ -182,5 +202,14 @@ class PlayerScript(AppScript):
         root_bind_func("<Motion>", self.player.turn)
 
     @override
-    def run(self, scene: Scene, ):
+    def run(self, scene: Scene):
+        """
+        Обновление скрипта каждый кадр.
+        
+        В данном скрипте ничего не выполняется каждый кадр,
+        так как управление обрабатывается через события.
+        
+        Args:
+            scene: Сцена (не используется в данном скрипте).
+        """
         pass

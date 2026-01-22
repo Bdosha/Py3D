@@ -34,15 +34,15 @@ pip install numpy trimesh
 import core
 from core import obj
 
-# Создаём игрока
-player = core.Player(position=(0, 0, 0), direction=(0, 1, 0))
+# Создаём камеру
+camera = core.Camera(position=(0, 0, 0), direction=(0, 1, 0))
 
 # Создаём объекты
 cube = obj.Cube(position=(0, 10, 0), side=2, color=(255, 0, 0))
 sphere = obj.Sphere(position=(5, 10, 0), details=10, color=(0, 255, 0))
 
 # Создаём источник света
-light = core.Light(
+light = core.SpotLight(
     position=(10, 0, 10),
     color=(255, 255, 255),  # Цвет света (RGB)
     power=15
@@ -50,29 +50,33 @@ light = core.Light(
 
 # Создаём сцену
 scene = core.Scene(
-    player,
     screen_size=(800, 600),
+    camera=camera,
     objects=[cube, sphere],
-    lights=[light],
-    show_fps=True
+    lights=[light]
 )
 
-# Главный цикл
-while True:
-    scene.render()
+# Создаём приложение
+app = core.App(
+    camera=camera,
+    objects=[cube, sphere],
+    lights=[light]
+)
+app.run()
 ```
 
-### Использование App и RenderScript
+### Использование App и AppScript
 
 Для более сложных сцен с динамическим поведением используйте систему скриптов:
 
 ```python
 import core
 from core import obj
-from core.app import App, RenderScript
+from core.app import App
+from core.scripts.base_script import AppScript
 
-class MyScript(RenderScript):
-    def init(self, scene: core.Scene):
+class MyScript(AppScript):
+    def init(self, scene: core.Scene, root_bind_func=None):
         # Инициализация при старте
         cube = obj.Cube(position=(0, 10, 0), side=2)
         scene.objects.append(cube)
@@ -83,8 +87,8 @@ class MyScript(RenderScript):
         pass
 
 # Создаём приложение
-scene = core.Scene(core.Player())
-app = App(scene, MyScript())
+camera = core.Camera()
+app = App(camera=camera, app_scripts=[MyScript()])
 app.run()
 ```
 
@@ -107,14 +111,14 @@ app.run()
 
 ### Core (Ядро)
 
-- `Camera` — проекция 3D→2D, culling
-- `Light` — источники освещения
+- `Camera` — проекция 3D→2D, culling, управление камерой
+- `BaseLight`, `SpotLight`, `PointLight` — источники освещения
 - `Object` — ABC для всех 3D объектов
-- `Player` — управление камерой
 - `Scene` — объединение компонентов, рендеринг
 - `Screen` — вывод через tkinter Canvas
 - `App` — обёртка для работы со скриптами рендеринга
-- `RenderScript` — базовый класс для скриптов сцены
+- `AppScript` — базовый класс для скриптов сцены
+- `PlayerScript` — скрипт управления камерой от первого лица (WASD + мышь)
 - `Editor` — GUI редактор для управления объектами и источниками света
 - `LightingSystem` — система управления освещением с кэшированием
 
@@ -191,8 +195,8 @@ model = obj.Model(
 ### Базовое освещение
 
 ```python
-# Точечный направленный свет
-light = core.Light(
+# Направленный точечный свет (прожектор)
+light = core.SpotLight(
     position=(10, 0, 10),
     direction=(0, 0, -1),
     color=(255, 255, 255),  # Белый свет
@@ -200,9 +204,17 @@ light = core.Light(
     power=15                # Мощность
 )
 
+# Или точечный свет без направления
+point_light = core.PointLight(
+    position=(10, 0, 10),
+    color=(255, 255, 255),
+    power=15
+)
+
+camera = core.Camera()
 scene = core.Scene(
-    player,
     screen_size=(800, 600),
+    camera=camera,
     objects=[cube],
     lights=[light]
 )
@@ -214,21 +226,21 @@ scene = core.Scene(
 
 ```python
 # Красный свет
-red_light = core.Light(
+red_light = core.SpotLight(
     position=(10, 0, 10),
     color=(255, 0, 0),
     power=15
 )
 
 # Зелёный свет
-green_light = core.Light(
+green_light = core.SpotLight(
     position=(-10, 0, 10),
     color=(0, 255, 0),
     power=15
 )
 
 # Синий свет
-blue_light = core.Light(
+blue_light = core.SpotLight(
     position=(0, 0, 10),
     color=(0, 0, 255),
     power=15
@@ -251,23 +263,32 @@ blue_light = core.Light(
 Py3D/
 ├── core/
 │   ├── __init__.py
-│   ├── app.py              # App и RenderScript
-│   ├── object.py           # Базовый класс объектов (ABC)
+│   ├── app.py              # App и настройки приложения
 │   ├── scene.py            # Сцена и рендеринг
 │   ├── screen.py           # Вывод на экран
 │   ├── objects/
 │   │   ├── __init__.py
+│   │   ├── object.py       # Базовый класс объектов (ABC)
 │   │   ├── camera.py       # Камера и проекция
-│   │   ├── light.py        # Источники света
-│   │   ├── lighting.py     # Система освещения
-│   │   ├── player.py       # Управление игроком
+│   │   ├── lights/
+│   │   │   ├── __init__.py
+│   │   │   ├── base_light.py  # Базовый класс источников света
+│   │   │   ├── point_light.py # Точечный свет
+│   │   │   ├── spot_light.py  # Направленный свет (прожектор)
+│   │   │   └── lighting.py    # Система освещения
 │   │   └── bodies/
+│   │       ├── __init__.py
 │   │       ├── cube.py         # Куб
 │   │       ├── sphere.py       # Сфера
 │   │       ├── surface.py      # Плоскость
 │   │       ├── graphics.py     # Графики и параметрические поверхности
 │   │       ├── load_graphic.py # Генераторы полигонов
 │   │       └── model.py        # Загрузчик GLTF
+│   ├── scripts/
+│   │   ├── __init__.py
+│   │   ├── base_script.py   # Базовый класс скриптов
+│   │   ├── player_script.py # Управление камерой от первого лица
+│   │   └── move_script.py   # Скрипты движения объектов
 │   └── tools/
 │       ├── __init__.py
 │       ├── constants.py    # Константы движка

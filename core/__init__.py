@@ -2,12 +2,13 @@
 Ядро 3D движка Py3D.
 
 Содержит основные компоненты для рендеринга:
-- Camera: проекция 3D на 2D
-- Light: источники освещения
+- Camera: проекция 3D на 2D, отсечение невидимых полигонов
+- BaseLight, SpotLight, PointLight: источники освещения
 - Object: базовый класс объектов
-- Player: управление игроком
 - Scene: управление сценой и рендеринг
 - Screen: вывод на экран через tkinter
+- App: обёртка для работы со скриптами
+- Editor: GUI редактор сцены
 """
 
 from core.tools.types import Vector3, Vector2, Triangle, Color, Polygon

@@ -442,10 +442,18 @@ class InspectorPanel:
             ).pack(side=tk.LEFT)
 
             slider = tk.Scale(
-                row, from_=range_[0], to=range_[1], resolution=resolution,
-                orient=tk.HORIZONTAL, bg=DARK_THEME['bg'], fg=DARK_THEME['fg'],
-                troughcolor=DARK_THEME['input_bg'], activebackground=color,
-                highlightthickness=0, length=140, showvalue=True,
+                row,
+                from_=range_[0],
+                to=range_[1],
+                resolution=resolution,
+                orient=tk.HORIZONTAL,
+                bg=DARK_THEME['bg'],
+                fg=DARK_THEME['fg'],
+                troughcolor=DARK_THEME['input_bg'],
+                activebackground=color,
+                highlightthickness=0,
+                length=140,
+                showvalue=True,
                 command=lambda v, idx=i, cb=callback: cb(idx, float(v))
             )
             slider.set(float(values[i]) if i < len(values) else 0)
@@ -462,10 +470,18 @@ class InspectorPanel:
         ).pack(side=tk.LEFT)
 
         slider = tk.Scale(
-            frame, from_=range_[0], to=range_[1], resolution=resolution,
-            orient=tk.HORIZONTAL, bg=DARK_THEME['bg'], fg=DARK_THEME['fg'],
-            troughcolor=DARK_THEME['input_bg'], activebackground=DARK_THEME['accent'],
-            highlightthickness=0, length=160, showvalue=True,
+            frame,
+            from_=range_[0],
+            to=range_[1],
+            resolution=resolution,
+            orient=tk.HORIZONTAL,
+            bg=DARK_THEME['bg'],
+            fg=DARK_THEME['fg'],
+            troughcolor=DARK_THEME['input_bg'],
+            activebackground=DARK_THEME['accent'],
+            highlightthickness=0,
+            length=160,
+            showvalue=True,
             command=lambda v: callback(float(v))
         )
         slider.set(value)

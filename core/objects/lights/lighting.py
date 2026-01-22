@@ -5,9 +5,8 @@
 Отделяет логику освещения от рендеринга для лучшей архитектуры.
 """
 
-from typing import Optional, override
+from typing import Optional
 import numpy as np
-from setuptools.command.egg_info import overwrite_arg
 
 from core.objects import Object
 from core.objects.lights import BaseLight

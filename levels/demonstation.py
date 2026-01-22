@@ -51,6 +51,7 @@ class DemonstrationScript(AppScript):
             model_path="levels/feature/scene.gltf",
             position=(5, 20, 0),
             direction=(-90, 0, 0),
+            color=(200, 255, 200),
 
         )
         self.bottle_moving_script: DeltaMoveScript = DeltaMoveScript(
